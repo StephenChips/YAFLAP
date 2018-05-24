@@ -30,6 +30,13 @@ The mutable object below records changes the autometa has performed, providing
 functionalityof undo and redo. When a action completed, and generate a new
 autometa, it will be added intothis object.
 */
+
+const MATCH_RESULT = {
+  SECCESS: "seccess",
+  FAILED: "failed",
+  UNKNOWN: "unknown"
+};
+
 const HISTORY = {
   log: [[]],
   current: 0,
@@ -49,18 +56,18 @@ HISTORY.push = function(autometa) {
   this.history[this.current] = autometa;
 }
 
+const selectOutEdges = R.prop('outEdges');
+/* Test ndoe's equality */
 const isNodeEquals = (thisNode, thatNode) =>
-thisNode.name === thatNode.name
-;
+  thisNode.name === thatNode.name;
 
-const isEdgeEquals = (thisEdge, thatEdge) =>
-thisEdge.source === thatEdge.source &&
-thisEdge.target === thatEdge.target
-;
+/* Test edge's equality */
+const isSourceEquals = thatEdge => R.equals(thatEdge.source);
+const isTargetEquals = thatEdge => R.equals(thatEdge.target);
+const isEdgeEquals = R.both(thisSourceEquals, isTargetEquals);
 
 /* create new Object with outEdges property */
-const wrapNode = (node) =>
-Object.assign(node, { outEdges: [] });
+const wrapNode = R.assoc('outEdges', []);
 
 /**
 * add edge to autometa.
@@ -70,21 +77,14 @@ Object.assign(node, { outEdges: [] });
 * @exception if edge exists, throw string 'Edge exists'.
 * @sig object -> object -> object | Error
 */
-const addEdge = (autometa, edge) => {
-  if (hasEdge(autometa, edge)) {
-    throw 'Edge exists.'
-  } else {
-    return autometa.map(node => {
-      if (node.name === newEdge.source) {
-        return node;
-      } else {
-        return Object.assign(node, {
-          outEdges: node.outEdges.concat([newEdge]);
-        });
-      }
-    });
-  }
-}
+const addEdge = R.uncurryN(2, edge => R.ifElse(
+  hasEdge(edge),
+  () => throw 'Edge exists.',
+  R.map(R.when(
+    node => node.name === edge.source,
+    node => R.assoc('outEdges', R.append(edge, node.outEdges)))
+  )));
+
 /**
 * add node to autometa
 * @param {object} autometa [description]
@@ -93,13 +93,12 @@ const addEdge = (autometa, edge) => {
 * @exception if node exists, throw Error with string 'Edge exists'
 * @sig object -> object -> object | null
 */
-const addNode = (autometa, node) => {
-  if (hasNode(autometa, node)) {
-    throw 'Node exists';
-  } else {
-    return autometa.concat([wrapNode(node)]);
-  }
-}
+const addNode = node => R.ifElse(
+  hasNode(node),
+  () => 'Node exists.',
+  R.compose(wrapNode, R.concat)
+);
+
 /**
 * Change a edge's properties
 * @param  {object} autometa  the autometa
@@ -123,32 +122,21 @@ const addNode = (autometa, node) => {
 * }
 * @example
 */
-const changeEdge = (autometa, key, newAttr) => {
-  if (!hasEdge(key)) {
-    throw 'No such edge';
-  } else if (hasUnknownEdgeAttribute(newAttr)) {
-    throw 'Unknown attribute.';
-  } else if (hasEdgePrimaryKey(newAttr)) {
-    throw 'Cannot change edge\'s source or target';
-  } else {
-    return autometa.map(node => {
-      if (node.name === key.source) {
-        const newOutEdges = node.outEdges.map(edge => {
-          if (edge.target === key.target) {
-            return Object.assign(edge, newAttr);
-          } else {
-            return edge;
-          }
-        });
+const changeEdge = R.uncurryN(3, key => newAttr => {
+  let updateEdge = R.when(
+    edge => edge.target === key.target,
+    R.merge(newAttr, edge));
+  let updateNode = R.when(
+    node => node.name === key.source,
+    node => R.assoc('outEdge', R.map(updateEdge, R.prop('outEdges', node)), node);
 
-        return Object.assign(node, { outEdges: newOutEdges });
-      });
-    } else {
-      return node;
-    }
-  })
-  return autometa.map((node) => matchNode(node) ? updateNode(node) : node);
-};
+  return R.cond([
+    [() => !hasEdge(key), () => throw 'No such edge.'],
+    [() => hasUnknownEdgeAttribute(newAttr), () => throw 'Unknown attribute.'],
+    [() => hasEdgePrimaryKey(newAttr), () => throw 'Cannot change edge\'s source or target.'],
+    [R.T, R.map(updateNode)],
+  ]);
+});
 
 /**
 * @param  {object} autometa the autometa
@@ -170,21 +158,12 @@ const changeEdge = (autometa, key, newAttr) => {
 * }
 * @exception
 */
-const changeNode = (autometa, key, newAttr) => {
-  if (!hasNode(autometa, key)) {
-    throw 'No such node.';
-  } else if (hasUnknownNodeAttribute(newAttr)) {
-    throw 'Unknown node attribute.';
-  } else if (hasNodePrimaryKey(newAttr)) {
-    throw 'Cannot change node\'s name';
-  } else {
-    return autometa.map((node) =>
-      isNodeEquals(node, key)
-      ? Object.assign(node, newAttr)
-      : node
-    );
-  }
-}
+const changeNode = R.uncurryN(3, key => newAttr => R.cond([
+  [hasNode(key), () => throw 'Node such node.'],
+  [() => hasUnknownEdgeAttribute(newAttr), () => throw 'Unknown node attribute.'] ,
+  [() => hasNodePrimaryKey(newAttr), () => throw 'Channot change node\'s name.'],
+  [R.T, R.map(R.when(isNodeEquals(key), R.merge(newAttr)))]
+]);
 /**
 * Find edges that match key
 * @param  {object} autometa the autometa
@@ -199,33 +178,26 @@ const changeNode = (autometa, key, newAttr) => {
 * If specify both, it will return a edge object rather than a list.
 * Otherwise filter those satisfied key and put it into the result list.
 */
-const findEdge = (autometa, key) => {
-  /* If key's undefined, return all edges. */
-  /* If key object has source attribute, we can just filter specific adjcency list. */
-  /* Otherwise, map each node by filtering their adjcency list, then concatenate them together. */
-  const _fEdge = (autometa, key) => {
-    if (key === undefined) {
-      return Array.prototype.concat.apply([], autometa.map(node => node.outEdges));
-    } else if (key.source) {
-      const node = autometa.find(node => node.name === key.source);
-      if (key.target) {
-        return node.outEdges.filter(edge => edge.target === key.target);
-      } else {
-        return node.outEdges;
-      }
-    } else if (key.target) {
-      return Array.prototype.concat.apply([], autometa.map(node =>
-        node.outEdges.filter(edge => edge.target === key.target)
-      ));
-    } else {
-      return [];
-    }
-  }
 
-  const result = _fEdge(autometa, key);
+const findEdge = key => {
+  const findAllEdges = R.compose(R.map(selectOutEdges), R.flatten);
+  const findEdgesBySource = R.compose(R.find(isSourceEquals(key)), selectOutEdges);
+  const findEdgesByKey = R.compose(_fNode, selectOutEdges, R.filter(isTargetEquals(key)));
+  const findEdgesByTarget = R.compose(
+    R.map(R.compose(selectOutEdges, R.filter(isTargetEquals(key)))),
+    R.flatten);
 
-  /* If there is only one edge in the resuit list, return itself rather than the list. */
-  return result.length === 1 ? result[0] : result;
+  const _fEdge = R.cond([
+    [R.equals("all"), findAllEdges] ,
+    [R.both(R.has('source'), R.has('target')), findEdgeByKey],
+    [R.has('source'), findEdgesBySource],
+    [R.has('target'), findEdgesByTarget]
+  ]);
+
+  return autometa => {
+    const result = _fEdge(autometa); /* result a list */
+    return R.equals(result.length, 1) ? result[0] : result;
+  };
 }
 
 // TODO: implement stream instead of list
@@ -243,10 +215,9 @@ If key equals undefined or n
 * If key equals undefined or null, it will return all nodes.
 * Otherwise filter those satisfied key and put it into the result list.
 */
-const findNode = R.uncurryN(2, key => R.compose(
-    R.filter(node => node.name === key),
-    R.omit('outEdges')
-));
+
+const _fNode = key => find(isNodeEquals(key));
+const findNode = R.uncurryN(2, key => R.compose(_fNode, R.omit('outEdges')));
 
 // TODO: implement stream instead of list
 /**
@@ -267,21 +238,14 @@ const findNode = R.uncurryN(2, key => R.compose(
 *   attr2: <new value>
 * }
 */
-const removeEdge = (autometa, key) => {
-  if (!hasEdge(autometa, key)) {
-    throw 'No such edge.';
-  } else {
-    return autometa.map(node =>
-      if (node.name !== key.source) {
-        return node;
-      } else {
-        return Object.assign(node, {
-          outEdges: node.outEdges.filter(edge => edge.target !== key.target)
-        });
-      }
-    );
-  }
-};
+const removeEdge = key => R.ifElse(
+  R.complement(hasEdge(key)),
+  () => throw 'No such edge.',
+  R.map(R.when(
+    R.equals(key.source)),
+     R.assoc(
+       'outEdges',
+       R.compose(R.prop('outEdges'), R.filter(isTargetEquals(key))))));
 
 /**
 * Remove a node
@@ -289,7 +253,6 @@ const removeEdge = (autometa, key) => {
 * @param  {string} key       the name of the node
 * @return {object}           A new autometa
 * @sig object -> object -> object | error
-* @exception if either source or target does not exist, throw Error with msg 'No such node.'
 * @exception if no node matches given key, throw Error with msg 'No such node.'
 * @note
 * The attributes name are the primary key of a node, so it cannot be changed once it is
@@ -302,17 +265,21 @@ const removeEdge = (autometa, key) => {
 * }
 * @example
 */
-const removeNode = (autometa, key) => {
-  return autometa.reduce((acc, node) => {
-    if (node.name === key.source) {
-      return acc;
+
+const removeNode = key => {
+  const _rmNode = R.reduce((acc, node) =>
+    if (!isNodeEquals(key, node)) {
+      const newOutEdges = R.filter(
+        R.propSatisfies(target => target !== key, 'target'),
+        node.outEdges);
+      return R.assoc('outEdges', list, R.assoc('outEdges', newOutEdges, node));
     } else {
-      return acc.concat(Object.assign(node, {
-        outEdges: node.outEdges.filter(edge => edge.target !== key)
-      });
-    }
-  });
-};
+      return acc;
+    });
+
+    return R.ifElse(hasNode(key), _rmNode, () => throw 'No such node');
+}
+
 
 /**
 * Check if autometa has given edge
@@ -320,23 +287,18 @@ const removeNode = (autometa, key) => {
 * @param  {String}  key  name of the edge
 * @return {Boolean}      return true if has that edge
 */
-const hasEdge = (autometa, key) => {
-  let node = autometa.find(node => node.name === key.source);
-  if (node === undefined) {
-    return false;
-  } else {
-    return node.outEdges.some(edge => edge.target === key.target);
-  }
-};
-
+const hasEdge = R.uncurryN(2, key => R.compose(
+    R.find(node => R.equals(node.name, key.source),
+    R.ifElse(
+      node => node === undefined,
+      R.F,
+      (node) => R.any(isTargetEquals(key), node.outEdges)))));
 /**
 * Check if autometa has given node
 * @param  {Object}  autometa the autometa
 * @param  {String}  key  name of the edge
 * @return {Boolean}      return true if has that node
 */
-const hasNode = (autometa, key) => {
-  return autometa.some(node => node.name === key);
-}
+const hasNode = uncurryN(2, key => R.any(node => node.name === key));
 
 const match = (autometa, string) => true;
