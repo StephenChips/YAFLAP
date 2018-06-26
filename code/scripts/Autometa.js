@@ -91,12 +91,6 @@ define(['lib/ramda/ramda'], function (R)  {
     return new Node(this.key, this.type);
   };
 
-  var autometa = {
-    _instance: [],
-    get instance() { return this._instance; },
-    set instance(ins) { this._instance = ins },
-  };
-
   /* Test if two node equal by comparing their keys */
   const nodeEquals = (thatNode, thisNode) => R.eqProps('key', thatNode, thisNode);
   /* Test if two edge equal by comparing their keys */
@@ -514,27 +508,30 @@ define(['lib/ramda/ramda'], function (R)  {
     }
   });
 
-  return {
+  var autometa = {
+    _auto: [],
     nodeEquals: nodeEquals,
     edgeEquals: edgeEquals,
-    hasNode: hasNode,
-    hasEdge: hasEdge,
-    addNode: addNode,
-    addEdge: addEdge,
-    changeNode: changeNode,
-    changeEdge: changeEdge,
-    removeNode: removeNode,
-    removeEdge: removeEdge,
-    findNode: findNode,
-    findEdge: findEdge,
-    matchWholeString: matchWholeString,
-    getAutometaType: getAutometaType,
     nodeType: nodeType,
     autometaType: autometaType,
     matchResult: matchResult,
-    autometa: autometa,
     Node: Node,
     Edge: Edge,
     NodeRecord: NodeRecord,
   };
+
+  autometa.hasNode = function(node) { return hasNode(node, _auto); },
+  autometa.hasEdge = function(edge) { return hasEdge(edge, _auto); },
+  autometa.addNode = function(node) { this._auto = addNode(node, _auto); },
+  autometa.addEdge = function(edge) { this._auto = addEdge(edge, _auto); },
+  autometa.changeNode = function(node) { this._auto = changeNode(node, _auto); },
+  autometa.changeEdge = function(edge) { this._auto = changeEdge(edge, _auto); },
+  autometa.removeNode = function(node) { this._auto = removeNode(node, _auto); },
+  autometa.removeEdge = function(edge) { this._auto = removeEdge(edge, _auto); },
+  autometa.findNode = function (key) { return findNode(key, _auto); },
+  autometa.findEdge = function (key) { return findEdge(key, _auto); },
+  autometa.matchWholeString = function matchWholeString(string) { return matchWholeString(string, _auto); },
+  autometa.getAutometaType = function () { return getAutometaType(_auto); }
+
+  return { autometa: autometa };
 });

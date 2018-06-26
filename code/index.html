@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <title></title>
+  <!-- Materialize.js is *imported* as a requireJS module rather than a standalone script tag. -->
+  <script src="./scripts/lib/requirejs/require.js" charset="utf-8"></script>
+  <script type="text/javascript">
+  require.config({
+    baseUrl: './scripts'
+  });
+  </script>
+  <script src="./scripts/main.js" charset="utf-8"></script>
+  <script src="" charset="utf-8"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="./css/lib/materialize.css">
+  <link rel="stylesheet" href="./css/master.css">
+</head>
+<body>
+  <div class="sidenav sidenav-fixed" id="slide-out">
+    <div class="row center-align" id="website-desc">
+      <h3 class="col s12 title">YAFLAP</h3>
+      <p class="col s12 grey-text caption">Yet Another Formal Language and Autometa Package</p>
+    </div>
+    <div class="row" id="tab-wrapper">
+      <div class="col s12">
+        <ul class="tabs" id="panel-tab">
+          <li class="tab col s4"><a class="active" href="#attribute-panel">attribute</a></li>
+          <li class="tab col s4"><a href="#matching-panel">matching</a></li>
+          <li class="tab col s4"><a href="#generator-panel">generator</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="row" id="attribute-panel">
+      <section class="col s12">
+        <ul class="collection property-view">
+          <li class="collection-item red lighten-2 white-text">Autometa Type</li>
+          <li class="collection-item" id="autometa-type">NFA</li>
+       </ul>
+      </section>
+      <section class="col s12">
+        <ul class="collection property-view">
+          <li class="collection-item red lighten-2 white-text">Node Count</li>
+          <li class="collection-item" id="node-count">0</li>
+        </ul>
+      </section>
+      <section class="col s12">
+        <ul class="collection class property-view">
+          <li class="collection-item red lighten-2 white-text">Edge Count</li>
+          <li class="collection-item" id="edge-count">0</li>
+        </ul>
+      </section>
+    </div>
+    <div class="row" id="matching-panel">
+      <div class="input-field col s12 ">
+        <input placeholder="Input string to match" id="matchbox" type="text" class="validate">
+        <label for="matchbox">match</label>
+      </div>
+    </div>
+    <div class="row" id="generator-panel">
+      <p class="col s12">Coming soon...</p>
+    </div>
+  </div>
+  <div id="content">
+    <div class="board-wrapper">
+      <svg id="board"></svg>
+      <ul class="dropdown-content" id="context-menu">
+        <li><a href="#">Set initial</a></li>
+        <li><a href="#">Set final</a></li>
+        <li><a href="#">Set normal</a></li>
+        <li></i class="material-icon">delete</i></li>
+      </ul>
+    </div>
+    <div class="fixed-action-btn" id="mode-selection">
+      <a href="#" class="btn-floating blue darken-1 btn-large" id="current-mode-button"><i class="large material-icons">edit</i></a>
+      <ul>
+        <li><a class="btn-floating amber" id="addition-mode-button"><i class="material-icons">add</i></a></li>
+        <li><a class="btn-floating red" id="removal-mode-button"><i class="material-icons">clear</i></a></li>
+        <li><a class="btn-floating blue darken-1" id="edition-mode-button"><i class="material-icons">edit</i></a></li>
+      </ul>
+    </div>
+    <div class="sidenav-menu">
+      <a href="#" id="sidenav-trigger" class="btn-floating btn-large teal sidenav-trigger" data-target="slide-out"><i class="material-icons">menu</i></a>
+    </div>
+  </div>
+</body>
+</html>
