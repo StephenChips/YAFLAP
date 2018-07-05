@@ -530,8 +530,7 @@ define(['lib/ramda/ramda'], function (R)  {
   autometa.removeEdge = function(edge) { this._auto = removeEdge(edge, _auto); },
   autometa.findNode = function (key) { return findNode(key, _auto); },
   autometa.findEdge = function (key) { return findEdge(key, _auto); },
-  autometa.matchWholeString = function matchWholeString(string) { return matchWholeString(string, _auto); },
+  autometa.matchWholeString = function (string) { return matchWholeString(string, _auto); },
   autometa.getAutometaType = function () { return getAutometaType(_auto); }
-
   return { autometa: autometa };
 });
