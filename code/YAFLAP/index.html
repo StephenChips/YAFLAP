@@ -5,11 +5,6 @@
   <title></title>
   <!-- Materialize.js is *imported* as a requireJS module rather than a standalone script tag. -->
   <script src="./src/lib/requirejs/require.js" charset="utf-8"></script>
-  <script type="text/javascript">
-  require.config({
-    baseUrl: './scripts'
-  });
-  </script>
   <script src="./src/main.js" charset="utf-8"></script>
   <script src="" charset="utf-8"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -17,6 +12,7 @@
   <link rel="stylesheet" href="./static/master.css">
 </head>
 <body>
+  <App></App>
   <div class="sidenav sidenav-fixed" id="slide-out">
     <div class="row center-align" id="website-desc">
       <h3 class="col s12 title">YAFLAP</h3>
@@ -79,9 +75,9 @@
         <li><a class="btn-floating blue darken-1" id="edition-mode-button"><i class="material-icons">edit</i></a></li>
       </ul>
     </div>
-    <div class="sidenav-menu">
-      <a href="#" id="sidenav-trigger" class="btn-floating btn-large teal sidenav-trigger" data-target="slide-out"><i class="material-icons">menu</i></a>
-    </div>
+  </div>
+  <div class="sidenav-menu">
+    <a href="#" id="sidenav-trigger" class="btn-floating btn-large teal sidenav-trigger" data-target="slide-out"><i class="material-icons">menu</i></a>
   </div>
 </body>
 </html>
