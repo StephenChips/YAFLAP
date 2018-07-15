@@ -1,6 +1,6 @@
 <template>
   <div class="edit-board">
-    <svg class="board"
+    <svg id="board"
       :style="boardStyle"
       @click="boardClicked">
       <!-- Definition of edge's shape: line with arrow -->

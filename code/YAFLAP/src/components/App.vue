@@ -23,6 +23,7 @@ import SidePanel from '@/components/SidePanel'
 import EditBoard from '@/components/EditBoard'
 import SidePanelButton from '@/components/SidePanelButton'
 import EditModeButtons from '@/components/EditModeButtons'
+import Autometa from '@/Autometa.js'
 
 export default {
   name: 'App',
@@ -38,7 +39,8 @@ export default {
       nodeData: [],
       edgeData: [],
       nodeCount: 0,
-      edgeCount: 0
+      edgeCount: 0,
+      autometa: Autometa.autometa
     }
   },
   methods: {
@@ -63,9 +65,9 @@ export default {
     },
     deleteBoardElement (elInfo) {
       if (elInfo.type === 'node') {
-        this.deleteNode(attrs.key)
+        this.deleteNode(elInfo.attrs.key)
       } else if (elInfo.type === 'edge') {
-        this.deleteEdge(attrs.key)
+        this.deleteEdge(elInfo.attrs.key)
       }
     },
     insertBoardElement (elInfo) {
@@ -76,25 +78,61 @@ export default {
       }
     },
     updateNodePosition (nodeKey, nodePosX, nodePosY) {
+      /** Update nodes */
+      this.nodeData = this.nodeData.map(node => {
+        if (node.key === nodeKey) {
+          return Object.assign({ posX: nodePosX, posY: nodePosY }, node)
+        } else {
+          return node
+        }
+      })
 
+      /** Update adjcency edges */
+      this.edgeData = this.edgeData.map(edge => {
+        if (edge.soruce === nodeKey) {
+          return Object.assign({ x0: nodePosX, y0: nodePosY }, edge)
+        } else if (edge.target === nodeKey) {
+          return Object.assign({ x1: nodePosX, y1: nodePosY }, edge)
+        } else {
+          return edge
+        }
+      })
     },
     updateNodeType (nodeKey, nodeType) {
-
+      this.nodeData = this.nodeData.map(node => {
+        if (node.key === nodeKey) {
+          return Object.assign({ type: nodeType }, node)
+        } else {
+          return node
+        }
+      })
     },
-    updateNodeLabel (nodeKey, label) {
-
+    updateNodeLabel (nodeKey, nodeLabel) {
+      this.nodeData = this.nodeData.map(node => {
+        if (node.key === nodeKey) {
+          return Object.assign({ label: nodeLabel }, node)
+        } else {
+          return node
+        }
+      })
     },
-    updateEdgeLabel (edgeKey, label) {
-
+    updateEdgeLabel (edgeKey, edgeLabel) {
+      this.edgeData = this.edgeData.map(edge => {
+        if (edge.key === edgeKey) {
+          return Object.assgin({ label: edgeLabel }, edge)
+        } else {
+          return edge
+        }
+      })
     },
     deleteNode (nodeKey) {
-
+      this.nodeData = this.nodeData.filter(node => node.key !== nodeKey)
     },
     deleteEdge (edgeKey) {
-
+      this.edgeData = this.edgeData.filter(edge => edge.key !== edgeKey)
     },
     insertNode (nodeAttrs) {
-      let key = this.generateNodeKey() // The key are generate automatically
+      let key = ++this.nodeCount // The key are generate automatically
 
       /** Mandatory properties */
       let posX = nodeAttrs.posX
@@ -103,39 +141,55 @@ export default {
       /** Optional properties */
       let type = nodeAttrs.type ? nodeAttrs.type : this.defaultValue.nodeType
       let label = nodeAttrs.label ? nodeAttrs.lable : this.defaultValue.label
+
+      let newNode = { key, posX, posY, type, label }
+      this.nodeData.push(newNode)
+      /** update internal autometa */
     },
     insertEdge (edgeAttrs) {
-      let key = this.generateEdgeKey() // The key are generate automatically
+      let key = ++this.edgeCount // The key are generate automatically
 
       /** Mandatory properties */
       let source = edgeAttrs.source
       let target = edgeAttrs.target
       /** Optional properties */
       let label = edgeAttrs.label ? edgeAttrs.label : this.defaultValue.edgeLabel
+
+      let d = this.calculatePath(source, target)
+      let newEdge = { key, d, label }
+      this.edgeData.push(newEdge)
     },
-    generateNodeKey () {
-      return counter.next()
+    calculatePath (source, target) {
+      if (this.allNodesExist(source, target)) {
+        let edgeBetweenTwoNodes = this.nodeData.filter(node => [source, target].includes(node.key))
+      }
     },
-    generateEdgeKey () {
-      return counter.next()
-    },
+    allNodesExist () {
+      let nodeKeys = Array.from(arguments)
+      let length = this.node.length
+      let i, j
+      i = j = 0
+      for (; i < length; i++) {
+        for (; j < length; j++) {
+          if (this.nodeData.key === nodeKeys[j]) {
+            break
+          }
+        }
+      }
+      return j === length
+    }
   },
   computed: {
     tabViewStyle () {
       return {}
     },
     editBoardStyle () {
-      return {}
+      return {
+
+      }
     }
   },
-  components: {
-    SidePanel, EditBoard, SidePanelButton, EditModeButtons
-  }
-}
-
-let counter = {
-  value: 0,
-  next () { return this.value++ }
+  components: { SidePanel, EditBoard, SidePanelButton, EditModeButtons }
 }
 </script>
 <style scoped>
