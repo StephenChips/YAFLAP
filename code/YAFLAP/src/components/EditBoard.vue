@@ -25,7 +25,7 @@
           @dblclick="showEditField">
           <path
             style="edge-style"
-            marker-end="url(#arrow)"
+            marker-mid="url(#arrow)"
             :key="edge.key"
             :id="'edge-' + edge.key"
             :d="edge.d"
@@ -108,8 +108,8 @@ import D3 from '@/lib/d3js/d3'
  *   label: node's label (optional)
  *   type: node's type (optional)
  * Edge:
- *   source: Source node's id (mandatory)
- *   target: Target node's id (mandatory)
+ *   sourceKey: Source node's key (mandatory)
+ *   targetKey: Target node's key (mandatory)
  *   label: edge's label (optional)
  * ## DELETE ##
  * Node:
@@ -257,7 +257,7 @@ export default {
     },
     mousemoveHandler (event) {
       var position = this.getRgetRelativeMousePosition(event)
-      if (this.editing.type === 'dragNode') {
+      if (this.editing.editType === 'dragNode') {
         /** Move selected node */
         this.$emit('update', {
           type: 'node',
@@ -278,7 +278,7 @@ export default {
     },
     mouseUpHandler () {
       // No need to check edit mode, because if editing type is 'link', the edit board must be in edit mode
-      if (this.editing.type === 'addEdge' && this.hoveredNode) {
+      if (this.editing.editType === 'addEdge' && this.hoveredNode) {
         /** Add edge */
         this.$emit('insert', {
           type: 'edge',
@@ -299,23 +299,28 @@ export default {
           left: position.x,
           position: 'absolute'
         }
-        this.editing = { type: 'contextmenu', elType: 'contextmenu', elKey: 'contextmenu' }
+        this.editing = { editType: 'contextmenu', elType: 'contextmenu', elKey: 'contextmenu' }
       }
     },
     showEditField (event) {
       if (this.editMode === 'edit') {
         let typeKeyObj = this.getElementTypeAndKey(event.target)
-        let position = this.getRelativeMousePosition(event)
+        let position, editType
+        if (this.typeKeyObj.type === 'node') {
+          editType = 'updateNode'
+          position = this.getRelativeMousePosition(event)
+        } else if (this.typeKeyObj.type === 'edge') {
+          editType = 'updateEdge'
+          position = this.getPathMiddlePosition(event.target)
+        } else {
+          return
+        }
         this.editFieldStyleValue = {
           top: position.y,
           left: position.x,
           position: 'absolute'
         }
-        if (this.typeKeyObj.key === 'node') {
-          this.editing = { type: 'updateNode', elType: 'node', elKey: typeKeyObj.key }
-        } else if (this.typeKeyObj.key === 'edge') {
-          this.editing = { type: 'updateEdge', elType: 'edge', elKey: typeKeyObj.key }
-        }
+        this.editing = { editType: editType, elType: this.typeKeyObj.type, elKey: typeKeyObj.key }
       }
     },
     getElementTypeAndKey ($el) {
@@ -327,8 +332,8 @@ export default {
     },
     getRelativeMousePosition (event) {
       return {
-        x: event.pageX - this.$el.offsetLeft,
-        y: event.pageY - this.$el.offsetTop
+        x: this.$el.offsetLeft,
+        y: this.$el.offsetTop
       }
     },
     calculateStraightPath (edge) {
@@ -337,17 +342,22 @@ export default {
         .moveTo(edge.x0, edge.y0)
         .lineTo(edge.x1, edge.y1)
         .toString()
+    },
+    getPathMiddlePosition (path) {
+      let length = path.getTotalLength()
+      let midPoint = path.getPointAtLength(length / 2)
+      return { x: midPoint.x, y: midPoint.y }
     }
   },
   computed: {
     auxiliaryEdgeShowed () {
-      return this.editing.type === 'addEdge'
+      return this.editing.editType === 'addEdge'
     },
     contextMenuOpened () {
-      return this.editing.type === 'contextmenu'
+      return this.editing.editType === 'contextmenu'
     },
     editFieldShowed () {
-      return ['updateNode', 'updateEdge'].includes(this.editing.type)
+      return ['updateNode', 'updateEdge'].includes(this.editing.editType)
     },
     dropMenuStyle () {
       return {
@@ -367,6 +377,9 @@ export default {
 }
 </script>
 <style  scoped>
+#board {
+  position: relative;
+}
 .node {
   stroke: black;
   stroke-width: 3px;
