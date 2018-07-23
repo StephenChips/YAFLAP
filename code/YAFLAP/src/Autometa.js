@@ -30,13 +30,13 @@ functionalityof undo and redo. When a action completed, and generate a new
 autometa, it will be added intothis object.
 */
 
-import R from './lib/ramda/ramda'
+import R from 'ramda'
 
-const nodeType = {
-  NORMAL: 0,
-  INITIAL: 1,
-  FINAL: 2,
-  INIT_FINAL: 3 /* I node that is both final and initial */
+export const NODE_TYPE = {
+  normal: 'normal',
+  initial: 'initial',
+  final: 'final',
+  initFinal: 'init final' /* I node that is both final and initial */
 }
 
 /* Except empty autometa, if a autometa is valid (either nfa or dfa),
@@ -50,49 +50,47 @@ const nodeType = {
 * into the fail node, there are not any character can help it escaping this node.
 * */
 
-const autometaType = {
-  DFA: 0,
-  NFA: 1,
-  INVALID: 2,
-  EMPTY: 3 /* autometa with zero edge and node. */
+export const AUTOMETA_TYPE = {
+  dfa: 'dfa',
+  nfa: 'nfa',
+  invalid: 'invalid',
+  empty: 'empty' /* autometa with zero edge and node. */
 }
 
-const matchResult = {
-  OK: 0,
-  FAILED: 1,
-  UNKNOWN: 2
+export const MATCH_RESULT = {
+  ok: 'ok',
+  failed: 'failed',
+  unknown: 'unknown'
 }
 
-class Node {
+export class Node {
   constructor (key, type) {
     this.key = key
     this.type = type
   }
 }
 
-class Edge {
+export class Edge {
   constructor (source, target, transition) {
     this.key = { source, target }
     this.transition = transition
   }
 }
 
-class NodeRecord {
-  constructor (key, type, outEdges) {
-    this.key = key
-    this.type = type
-    this.outEdges = outEdges
+function NodeRecord (key, type, outEdges) {
+  this.key = key
+  this.type = type
+  this.outEdges = outEdges
+}
+NodeRecord.fromNode = function (node, outEdges) {
+  if (outEdges) {
+    return new NodeRecord(node.key, node.type, outEdges)
+  } else {
+    return new NodeRecord(node.key, node.type, [])
   }
-  fromNode (node, outEdges) {
-    if (outEdges) {
-      return new NodeRecord(node.key, node.type, outEdges)
-    } else {
-      return new NodeRecord(node.key, node.type, [])
-    }
-  }
-  toNode () {
-    return new Node(this.key, this.type)
-  }
+}
+NodeRecord.prototype.toNode = function () {
+  return new Node(this.key, this.type)
 }
 
 const _nodeAttrs = Object.keys(new Node())
@@ -315,7 +313,7 @@ const findNode = (key, autometa) => {
 * @exception if no edge matches given key, throw Error with msg 'No such edge.'
 * @note
 * The attributes ource and target are the primary key of a edge, so it cannot be changed once it is
-* inserted into the autometa. Before remvoing a edge, you should specify its
+* inserted into the autometa. Before removing a edge, you should specify its
 * source and target by passing it to the argument 'key', so that the function know
 * what to find. REMOVING MULTIPLE EDGE AT A TIME IS NOT SUPPORTED YET. The
 * argument newAttr specifies which attributes will be change. It has following sturcture:
@@ -348,7 +346,7 @@ const removeEdge = (key, autometa) => {
 * @exception if no node matches given key, throw Error with msg 'No such node.'
 * @note
 * The attributes key are the primary key of a node, so it cannot be changed once it is
-* inserted into the autometa. Before remvoing a node, you should specify its
+* inserted into the autometa. Before removing a node, you should specify its
 * source and target by passing it to the argument 'key', so that the function know
 * what to find. REMOVING MULTIPLE EDGE AT A TIME IS NOT SUPPORTED YET.
 * {
@@ -367,7 +365,7 @@ const removeNode = (key, autometa) => {
       } else {
         // NOTE: newOutEdges contains every nodes in the old list except those target equals the one of key.
         const newOutEdges = R.reject(edge => edge.key.target === key, node.outEdges)
-        return new NodeRecord(node.key, node.type, newOutEdges)
+        return acc.concat([new NodeRecord(node.key, node.type, newOutEdges)])
       }
     }, [], autometa)
   }
@@ -427,26 +425,27 @@ const isNodeRecordDeterministic = nodeRecord => {
 const isDFA = R.all(isNodeRecordDeterministic)
 
 const isValidAutometa = autometa => {
-  const typeIDList = R.values(autometaType)
-  const numberOfEachType = R.reduce((numberOf, currentNodeRecord) => {
-    let currentNumber = numberOf[currentNodeRecord.type]
-    let newNumberOf = R.assoc(currentNodeRecord.type, currentNumber + 1, numberOf)
-    return newNumberOf
-  }, R.repeat(0, typeIDList.length), autometa)
+  let nodeCountForEachType = {}
+  for (let nodeType of Object.values(NODE_TYPE)) {
+    nodeCountForEachType[nodeType] = 0
+  }
+  for (let nodeRecord of autometa) {
+    nodeCountForEachType[nodeRecord.type] += 1
+  }
   const hasUniqueInitialNode =
-    (numberOfEachType[nodeType.INITIAL] === 1 && numberOfEachType[nodeType.INIT_FINAL] === 0) ||
-    (numberOfEachType[nodeType.INITIAL] === 0 && numberOfEachType[nodeType.INIT_FINAL] === 1)
-  const hasFinalNode = numberOfEachType[nodeType.FINAL] > 0 || numberOfEachType[nodeType.INIT_FINAL] > 0
+    (nodeCountForEachType[NODE_TYPE.initial] === 1 && nodeCountForEachType[NODE_TYPE.initFinal] === 0) ||
+    (nodeCountForEachType[NODE_TYPE.initial] === 0 && nodeCountForEachType[NODE_TYPE.initFinal] === 1)
+  const hasFinalNode = nodeCountForEachType[NODE_TYPE.final] > 0 || nodeCountForEachType[NODE_TYPE.initFinal] > 0
 
   return hasUniqueInitialNode && hasFinalNode
 }
 
-const findInitialNode = R.find(node => node.type === nodeType.INITIAL || node.type === nodeType.INIT_FINAL)
+const findInitialNode = R.find(node => node.type === NODE_TYPE.initial || node.type === NODE_TYPE.initFinal)
 const getAutometaType = autometa => {
   if (isValidAutometa(autometa)) {
-    return isDFA(autometa) ? autometaType.DFA : autometaType.NFA
+    return isDFA(autometa) ? AUTOMETA_TYPE.dfa : AUTOMETA_TYPE.nfa
   } else {
-    return autometaType.INVALID
+    return AUTOMETA_TYPE.invalid
   }
 }
 
@@ -475,7 +474,7 @@ const matchWholeString = R.curry((string, autometa) => {
     }
     if (R.isEmpty(string)) {
       let finalNodes = epsilonClousure(currentNode, autometa)
-      return R.any(node => node.type === nodeType.FINAL || node.type === nodeType.INIT_FINAL, finalNodes)
+      return R.any(node => node.type === NODE_TYPE.final || node.type === NODE_TYPE.initFinal, finalNodes)
     } else {
       let isMatched = false
       for (var edge of currentNode.outEdges) {
@@ -507,32 +506,42 @@ const matchWholeString = R.curry((string, autometa) => {
   }
   if (isValidAutometa(autometa)) {
     let result = execute(string, autometa, findInitialNode(autometa), [])
-    return result ? matchResult.OK : matchResult.FAILED
+    return result ? MATCH_RESULT.ok : MATCH_RESULT.failed
   } else {
-    return matchResult.UNKNOWN
+    return MATCH_RESULT.unknown
   }
 })
 
-export let autometa = {
+export var autometa = {
   _auto: [],
   nodeEquals: nodeEquals,
   edgeEquals: edgeEquals,
-  nodeType: nodeType,
-  autometaType: autometaType,
-  matchResult: matchResult,
-  Node: Node,
-  Edge: Edge,
-  NodeRecord: NodeRecord,
-  hasNode: function (node) { return hasNode(node, this._auto) },
-  hasEdge: function (edge) { return hasEdge(edge, this._auto) },
-  addNode: function (node) { this._auto = addNode(node, this._auto) },
-  addEdge: function (edge) { this._auto = addEdge(edge, this._auto) },
-  changeNode: function (node) { this._auto = changeNode(node, this._auto) },
-  changeEdge: function (edge) { this._auto = changeEdge(edge, this._auto) },
-  removeNode: function (node) { this._auto = removeNode(node, this._auto) },
-  removeEdge: function (edge) { this._auto = removeEdge(edge, this._auto) },
+  hasNode: function (key) { return hasNode(key, this._auto) },
+  hasEdge: function (key) { return hasEdge(key, this._auto) },
+  insertNode: function (node) { this._auto = addNode(node, this._auto) },
+  insertEdge: function (edge) {
+    this._auto = addEdge(edge, this._auto)
+  },
+  updateNode: function (node) { this._auto = changeNode(node, this._auto) },
+  updateEdge: function (edge) { this._auto = changeEdge(edge, this._auto) },
+  deleteNode: function (key) {
+    this._auto = removeNode(key, this._auto)
+  },
+  deleteEdge: function (key) {
+    this._auto = removeEdge(key, this._auto)
+  },
   findNode: function (key) { return findNode(key, this._auto) },
   findEdge: function (key) { return findEdge(key, this._auto) },
-  matchWholeString: function (string) { return matchWholeString(string, this._auto) },
-  getAutometaType: function () { return getAutometaType(this._auto) }
+  matchWholeString: function (str) {
+    return matchWholeString(str, this._auto)
+  },
+  get type () {
+    return getAutometaType(this._auto)
+  },
+  get nodeCount () {
+    return this._auto.length
+  },
+  get edgeCount () {
+    return this._auto.reduce((acc, nodeRecord) => acc + nodeRecord.outEdges.length, 0)
+  }
 }

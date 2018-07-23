@@ -1,30 +1,38 @@
 <template>
   <div class="app">
-      <side-panel
-        :style="tabViewStyle"
-        :class="tabViewClass"
-      ></side-panel>
-      <edit-board
-        :style="editBoardStyle"
-        :class="editBoardClass"
-        :node-data="nodeData"
-        :edge-data="edgeData"
-        @update="updateBoardElement"
-        @delete="deleteBoardElement"
-        @insert="insertElementBoard"
+      <div class="row">
+        <side-panel class="col s3"></side-panel>
+        <edit-board
+          class="col s9"
+          :node-data="nodeData"
+          :edge-data="edgeData"
+          :edit-mode="editMode"
+          @update-node="updateNode"
+          @update-edge="updateEdge"
+          @delete-node="deleteNode"
+          @delete-edge="deleteEdge"
+          @insert-node="insertNode"
+          @insert-edge="insertEdge"
       ></edit-board>
-      <side-panel-button></side-panel-button>
-      <edit-mode-buttons></edit-mode-buttons>
+      </div>
+      <edit-mode-buttons
+        @switch-mode="switchMode"
+      ></edit-mode-buttons>
   </div>
 </template>
 <script>
 // Configured in {root}/build/webpack.base.conf.js, '@' stands for the src directory.
 import SidePanel from '@/components/SidePanel'
 import EditBoard from '@/components/EditBoard'
-import SidePanelButton from '@/components/SidePanelButton'
 import EditModeButtons from '@/components/EditModeButtons'
-import Autometa from '@/Autometa.js'
-import D3Path from '@/lib/d3-path.min'
+import * as D3Path from 'd3-path'
+import { LINE_STYLE, EDIT_MODE, NODE_TYPE } from '@/utils/enum'
+import { autometa } from '@/AutometaDecorator'
+import {
+  Node as AutometaNode,
+  Edge as AutometaEdge,
+  NODE_TYPE as AUTOMETA_NODE_TYPE
+} from '@/Autometa'
 
 export default {
   name: 'App',
@@ -35,111 +43,113 @@ export default {
         tabView: { },
         editBoard: { }
       },
-      tabViewClass: ['sidenav', 'sidenav-fixed'],
-      editBoardClass: [''],
       nodeData: [],
       edgeData: [],
-      nodeCount: 0,
-      edgeCount: 0,
-      autometa: Autometa.autometa
+      nodeCount: autometa.nodeCount,
+      edgeCount: autometa.edgeCount,
+      editMode: EDIT_MODE.edit,
+      defaultValue: {
+        nodeType: NODE_TYPE.normal,
+        nodeLabel: 'node',
+        edgeLabel: 'ε'
+      }
     }
   },
+  created () {
+    // Some properties that aren't reative
+    this.EDIT_MODE = EDIT_MODE
+    this.LINE_STYLE = LINE_STYLE
+    this.NODE_TYPE = NODE_TYPE
+    this.autometa = autometa
+  },
   methods: {
-    updateBoardElement (elInfo) {
-      let type = elInfo.type
-      let attrs = elInfo.attrs
-      if (type === 'node') {
-        if (attrs.posX || attrs.posY) {
-          this.updateNodePosition(attrs.key, attrs.posX, attrs.posY)
+    updateNode (nodeAttr) {
+      function getAutometaNodeType (nodeType) {
+        if (nodeType === NODE_TYPE.initial) {
+          return AUTOMETA_NODE_TYPE.initial
+        } else if (nodeType === NODE_TYPE.final) {
+          return AUTOMETA_NODE_TYPE.final
+        } else if (nodeType === NODE_TYPE.normal) {
+          return AUTOMETA_NODE_TYPE.normal
+        } else if (nodeType === NODE_TYPE.initFinal) {
+          return AUTOMETA_NODE_TYPE.initFinal
         }
-        if (attrs.label) {
-          this.updateNodeLabel(attrs.key, attrs.label)
-        }
-        if (attrs.type) {
-          this.updateNodeType(attrs.key, attrs.type)
-        }
-      } else if (type === 'edge') {
-        if (attrs.label) {
-          this.updateEdgeLabel(attrs.key, attrs.label)
+      }
+      let oldNodeIndex = this.nodeData.findIndex(node => node.key === nodeAttr.key)
+      let oldNode = this.nodeData[oldNodeIndex]
+      let newNode = new Node(Object.assign(oldNode, nodeAttr))
+      this.$set(this.nodeData, oldNodeIndex, newNode)
+      if (nodeAttr.posX || nodeAttr.posY) {
+        this.updateAdjcencyEdges(newNode)
+      }
+      if (nodeAttr.type) {
+        autometa.updateNode({
+          key: nodeAttr.key,
+          type: getAutometaNodeType(nodeAttr.type)
+        })
+      }
+    },
+    updateEdge (edgeAttr) {
+      let oldEdgeIndex = this.edgeData.findIndex(edge => edge.key === edgeAttr.key)
+      let oldEdge = this.edgeData[oldEdgeIndex]
+      let newEdge = new Edge(Object.assign(oldEdge, edgeAttr))
+      this.$set(this.edgeData, oldEdgeIndex, newEdge)
+      if (edgeAttr.label) {
+        let transition = parseTransition(edgeAttr.label)
+        let key = { source: newEdge.sourceKey, target: newEdge.targetKey }
+        if (transition.every(str => str.length === 1)) {
+          autometa.updateEdge({ key, transition })
+        } else {
+          /** Pop up error */
         }
       }
     },
-    deleteBoardElement (elInfo) {
-      if (elInfo.type === 'node') {
-        this.deleteNode(elInfo.attrs.key)
-      } else if (elInfo.type === 'edge') {
-        this.deleteEdge(elInfo.attrs.key)
-      }
-    },
-    insertBoardElement (elInfo) {
-      if (elInfo.type === 'node') {
-        this.insertNode(elInfo.attrs)
-      } else if (elInfo.type === 'edge') {
-        this.insertEdge(elInfo.attrs)
-      }
-    },
-    updateNodePosition (nodeKey, nodePosX, nodePosY) {
-      this._updateNodeByKey(nodeKey, {
-        posX: nodePosX,
-        posY: nodePosY
-      })
-
-      /** Update adjcency edges */
+    updateAdjcencyEdges (node) {
       this.edgeData = this.edgeData.map(edge => {
-        if (edge.soruce === nodeKey) {
-          return new Edge({ ...edge, x0: nodePosX, y0: nodePosY })
-        } else if (edge.targetKey === nodeKey) {
-          return new Edge({ ...edge, x1: nodePosX, y1: nodePosY })
+        if (edge.sourceKey === node.key && edge.targetKey === node.key) {
+          return new Edge(Object.assign(edge, { x0: node.posX, y0: node.posY, x1: node.posX, y1: node.posY }))
+        } else if (edge.sourceKey === node.key) {
+          return new Edge(Object.assign(edge, { x0: node.posX, y0: node.posY }))
+        } else if (edge.targetKey === node.key) {
+          return new Edge(Object.assign(edge, { x1: node.posX, y1: node.posY }))
         } else {
           return edge
         }
       })
     },
-    updateNodeType (nodeKey, nodeType) {
-      this._updateNodeByKey(nodeKey, {
-        type: nodeType
-      })
-    },
-    updateNodeLabel (nodeKey, nodeLabel) {
-      this._updateNodeByKey(nodeKey, {
-        label: nodeLabel
-      })
-    },
-    updateEdgeLabel (edgeKey, edgeLabel) {
-      this._updateEdgeByKey(edgeKey, {
-        label: edgeLabel
-      })
-    },
-    deleteNode (nodeKey) {
-      this.nodeData = this.nodeData.filter(node => node.key !== nodeKey)
+    deleteNode (nodeAttr) {
+      this.nodeData = this.nodeData.filter(node => node.key !== nodeAttr.key)
       // Delete adjcency edges
       this.edgeData = this.edgeData.filter(edge =>
-        edge.sourceKey !== nodeKey &&
-        edge.targetKey !== nodeKey
+        edge.sourceKey !== nodeAttr.key &&
+        edge.targetKey !== nodeAttr.key
       )
+      autometa.deleteNode(nodeAttr.key)
     },
-    deleteEdge (edgeKey) {
+    deleteEdge (edgeAttr) {
       let indexOfEdge = this.edgeData.findIndex(edge => edge.key)
+      let edgeShouldBeDeleted = this.edgeData[indexOfEdge]
       if (indexOfEdge === -1) {
         return
       } else {
-        let edgeShouldBeDeleted = this.edgeData[indexOfEdge]
         let indexOfReversedEdge = this.edgeData.findIndex(edge =>
           edgeShouldBeDeleted.source === edge.target &&
           edgeShouldBeDeleted.target === edge.source)
         let reversedEdge = this.edgeData[indexOfReversedEdge]
+        let newEdge = new Edge(Object.assign(reversedEdge, { lineStyle: LINE_STYLE.straightLine }))
         if (indexOfReversedEdge !== -1) {
-          this.$set(this.edgeData, indexOfReversedEdge, new Edge({
-            ...reversedEdge,
-            lineStyle: 'straightLine'
-          }))
+          this.$set(this.edgeData, indexOfReversedEdge, newEdge)
           this.edgeData.splice(indexOfReversedEdge, 1)
         }
       }
-      this.edgeData = this.edgeData.filter(edge => edge.key !== edgeKey)
+      this.edgeData = this.edgeData.filter(edge => edge.key !== edgeAttr.key)
+      autometa.deleteEdge({
+        source: edgeShouldBeDeleted.sourceKey,
+        target: edgeShouldBeDeleted.targetKey
+      })
     },
     insertNode (nodeAttrs) {
-      let key = keyGenerator.generate() // The key are generate automatically
+      let key = keyGenerator.generate().toString() // The key are generate automatically
 
       /** Mandatory properties */
       let posX = nodeAttrs.posX
@@ -147,20 +157,23 @@ export default {
 
       /** Optional properties */
       let type = nodeAttrs.type ? nodeAttrs.type : this.defaultValue.nodeType
-      let label = nodeAttrs.label ? nodeAttrs.lable : this.defaultValue.label
+      let label = nodeAttrs.label ? nodeAttrs.label : this.defaultValue.nodeLabel
 
-      let newNode = { key, posX, posY, type, label }
-      this.nodeData.push(newNode)
-      /** update internal autometa */
+      /** Insert node */
+      this.nodeData.push(new Node({
+        key, posX, posY, type, label
+      }))
+      autometa.insertNode(new AutometaNode(key, type))
     },
     insertEdge (edgeAttrs) {
-      let key = keyGenerator.generate()
+      let key = keyGenerator.generate().toString()
 
       /** Mandatory properties */
       let source = this.nodeData.find(node => node.key === edgeAttrs.sourceKey)
       let target = this.nodeData.find(node => node.key === edgeAttrs.targetKey)
       /** Optional properties */
       let label = edgeAttrs.label ? edgeAttrs.label : this.defaultValue.edgeLabel
+      let transition = parseTransition(label)
 
       if (source && target) {
         let indexOfReversedEdge, lineStyle
@@ -176,13 +189,13 @@ export default {
         if (indexOfReversedEdge !== -1) {
           // If there is a reversed edge in array, repaint it as a upward curve, and paint the new edge as downward edge.
           let reversedEdge = this.edgeData[indexOfReversedEdge]
-          this.$set(this.edgeData, indexOfReversedEdge, new Edge({
-            reversedEdge,
-            lineStyle: 'upwardCurve'
+          let newEdge = new Edge(Object.assign(reversedEdge, {
+            lineStyle: LINE_STYLE.upwardCurve
           }))
-          lineStyle = 'downwardCurve'
+          this.$set(this.edgeData, indexOfReversedEdge, newEdge)
+          lineStyle = LINE_STYLE.downwardCurve
         } else {
-          lineStyle = 'straightLine'
+          lineStyle = LINE_STYLE.straightLine
         }
         this.edgeData.push(new Edge({
           key,
@@ -195,55 +208,22 @@ export default {
           x1: target.posX,
           y1: target.posY
         }))
+        autometa.insertEdge(new AutometaEdge(source.key, target.key, transition))
       }
     },
-    hasNodes () {
-      let nodeKeys = Array.from(arguments)
-      let length = this.node.length
-      let i, j
-      i = j = 0
-      for (; i < length; i++) {
-        for (; j < length; j++) {
-          if (this.nodeData.key === nodeKeys[j]) {
-            break
-          }
-        }
-      }
-      return j === length
-    },
-    _updateNodeByKey (nodeKey, nodeAttrs) {
-      let nodeIndex = this.nodeData.findIndex(node => node.key === nodeKey)
-      let oldNode = this.nodeData[nodeIndex]
-      this.$set(this.nodeData, nodeIndex, new Node({
-        ...oldNode,
-        ...nodeAttrs
-      }))
-    },
-    _updateEdgeByKey (edgeKey, edgeAttrs) {
-      let edgeIndex = this.nodeData.findIndex(edge => edge.key === edgeKey)
-      let oldEdge = this.nodeData[edgeIndex]
-      this.$set(this.nodeData, edgeIndex, new Edge({
-        ...oldEdge,
-        ...edgeAttrs
-      }))
+    switchMode (mode) {
+      this.editMode = mode
     }
   },
-  computed: {
-    tabViewStyle () {
-      return {}
-    },
-    editBoardStyle () {
-      return {
-
-      }
-    }
-  },
-  components: { SidePanel, EditBoard, SidePanelButton, EditModeButtons }
+  components: { SidePanel, EditBoard, EditModeButtons }
 }
-
+/*  Edge's Attributes:
+ *   key: edge's identifier/key (mandatory)
+ *   label: Edge's label (optional)
+ */
 function Edge (edgeAttrs) {
   function setDefault (edge) {
-    edge.lineStyle = 'straightLine'
+    edge.lineStyle = LINE_STYLE.straightLine
   }
   const attributes = ['key', 'label', 'sourceKey', 'targetKey', 'x0', 'y0', 'x1', 'y1', 'lineStyle']
   Object.defineProperties(this, {
@@ -255,27 +235,26 @@ function Edge (edgeAttrs) {
         if (this.sourceKey !== this.targetKey) {
           this._lineStyle = lineStyle
         } else {
-          this._lineStyle = 'ring'
+          this._lineStyle = LINE_STYLE.ring
         }
       }
     },
     d: {
-      writable: false,
       get () {
-        if (this.lineStyle === 'ring') {
+        if (this.lineStyle === LINE_STYLE.ring) {
           return this._renderRing()
-        } else if (this.lineStyle === 'straightLine') {
+        } else if (this.lineStyle === LINE_STYLE.straightLine) {
           return this._renderStraightLine()
-        } else if (this.lineStyle === 'upwardCurve') {
+        } else if (this.lineStyle === LINE_STYLE.upwardCurve) {
           return this._renderCurve('upwardCurve')
-        } else if (this.lineStyle === 'downwardCurve') {
+        } else if (this.lineStyle === LINE_STYLE.downwardCurve) {
           return this._renderCurve('downwardCurve')
         }
       }
     }
   })
 
-  setDefault()
+  setDefault(this)
   for (let attr of attributes) {
     this[attr] = edgeAttrs[attr]
   }
@@ -283,64 +262,74 @@ function Edge (edgeAttrs) {
 Edge.prototype = {
   constructor: Edge,
   _renderCurve (archedDirction) {
-    const d = 20
     const midPoint = {
       x: (this.x0 + this.x1) / 2,
       y: (this.y0 + this.y1) / 2
     }
-    let distanceToMidPoint, controlPoint
+    const halfDistance = Math.sqrt(
+      Math.pow(this.x0 - midPoint.x, 2) +
+      Math.pow(this.y0 - midPoint.y, 2))
+
+    let path = D3Path.path()
+    let controlPoint
+    let negFlag
 
     if (archedDirction === 'upwardCurve') {
-      distanceToMidPoint = d
+      negFlag = 1
     } else if (archedDirction === 'downwardCurve') {
-      distanceToMidPoint = -d
+      negFlag = -1
     }
 
     if (this.x0 === this.x1) {
       // Vertical case, slope equals infinite
       controlPoint = {
-        x: midPoint.x + distanceToMidPoint,
+        x: midPoint.x + negFlag * halfDistance,
         y: midPoint.y
       }
     } else if (this.y0 === this.y1) {
       // Horizontal case, slope equals 0
       controlPoint = {
         x: midPoint.x,
-        y: midPoint.y + distanceToMidPoint
+        y: midPoint.y + negFlag * halfDistance
       }
     } else {
       let slope = (this.y0 - this.y1) / (this.x0 - this.x1)
-      let YBiasToMidPoint = distanceToMidPoint / Math.sqrt(slope * slope + 1)
-      let XBiasToMidPoint = slope * YBiasToMidPoint
+      let YBiasToMidPoint = negFlag * halfDistance / Math.sqrt(slope * slope + 1)
+      let XBiasToMidPoint = negFlag * slope * YBiasToMidPoint
       controlPoint = {
         x: midPoint.x + XBiasToMidPoint,
         y: midPoint.y + YBiasToMidPoint
       }
     }
-    return D3Path.path()
-      .moveTo(this.x0, this.y0)
-      .quadraticCurveTo(controlPoint.x, controlPoint.y, this.x1, this.y1)
-      .toString()
+    path.moveTo(this.x0, this.y0)
+    path.quadraticCurveTo(controlPoint.x, controlPoint.y, this.x1, this.y1)
+    return path.toString()
   },
   _renderStraightLine () {
-    return D3Path.path()
-      .moveTo(this.x0, this.y0)
-      .lineTo(this.x1, this.y1)
-      .toString()
+    let path = D3Path.path()
+    path.moveTo(this.x0, this.y0)
+    path.lineTo(this.x1, this.y1)
+    return path.toString()
   },
   _renderRing () {
     // this.x0 = this.x1 and this.y0 = this.y1
-    const d = 20
-    const controlPointA = { x: this.x0 - d, y: this.y0 + d }
-    const controlPointB = { x: this.y0 + d, y: this.y0 + d }
+    const d = 1
+    const controlPointA = { x: this.x0 - d, y: this.y0 + 0.6 * d }
+    const controlPointB = { x: this.y0 - d, y: this.y0 - 100 * d }
 
-    return D3Path.path()
-      .moveTo(this.x0, this.y0)
-      .bezierCurveTo(controlPointA.x, controlPointA.y, controlPointB.x, controlPointB.y, this.x1, this.y1)
-      .toString
+    let path = D3Path.path()
+    path.moveTo(this.x0, this.y0)
+    path.bezierCurveTo(controlPointA.x, controlPointA.y, controlPointB.x, controlPointB.y, this.x1, this.y1)
+    return path.toString()
   }
 }
-
+/* Node's Attributes:
+ *   key: node's identifier/key (mandatory)
+ *   posX: X coordinate of the node (optional)
+ *   posY: Y coordinate of the node (optional)
+ *   label: node's label (optional)
+ *   type: node's type (optional)
+ */
 function Node (nodeAttrs) {
   const attributes = ['key', 'label', 'type', 'posX', 'posY']
   for (let attr of attributes) {
@@ -354,6 +343,13 @@ var keyGenerator = {
     return this.count++
   }
 }
+
+var parseTransition = str => str
+  .split(',')
+  .map(function (str) {
+    let trimmed = str.trim()
+    return trimmed === 'ε' ? '' : trimmed
+  })
 </script>
 <style scoped>
 </style>

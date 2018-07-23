@@ -1,22 +1,42 @@
 <template>
-  <div class="fixed-action-btn" id="mode-selection">
-    <a href="#" class="btn-floating blue darken-1 btn-large" id="current-mode-button"><i class="large material-icons">edit</i></a>
+  <div class="fixed-action-btn">
+    <a href="#" class="btn-floating blue darken-1 btn-large" id="current-mode-button">
+      <i class="large material-icons">edit</i>
+    </a>
     <ul>
-      <li @click="emit('switch-mode', 'add')">
+      <li @click="$emit('switch-mode', EDIT_MODE.add)">
         <a class="btn-floating amber"><i class="material-icons">add</i></a>
       </li>
-      <li @click="emit('switch-mode', 'remove')">
+      <li @click="$emit('switch-mode', EDIT_MODE.delete)">
         <a class="btn-floating red"><i class="material-icons">clear</i></a>
       </li>
-      <li @click="emit('switch-mode', 'edit')">
+      <li @click="$emit('switch-mode', EDIT_MODE.edit)">
         <a class="btn-floating blue darken-1"><i class="material-icons">edit</i></a>
       </li>
     </ul>
   </div>
 </template>
 <script>
+import * as M from 'materialize-css'
+// eslint-disable-next-line
+import { EDIT_MODE } from '@/utils/enum'
+
 export default {
-  name: 'edit-mode-button'
+  name: 'edit-mode-button',
+  data () {
+    return {
+      delegate: undefined
+    }
+  },
+  created () {
+    this.EDIT_MODE = EDIT_MODE
+  },
+  mounted () {
+    this.delegate = M.FloatingActionButton.init(this.$el, {
+      direction: 'top',
+      hoverEnabled: true
+    })
+  }
 }
 </script>
 <style scoped>

@@ -1,37 +1,33 @@
 <template>
-  <div class="row">
-    <div class="col s12">
-      <ul class="tabs">
-          <!-- Switch then emit -->
-        <li class="tab col s3" v-for="tab in tabList"
-          v-bind:key="tab.key"
-          v-on:click="switchTag(tab, $event)">
-          <a href="#" :class="{ active: tab.isActive }">{{ tab.title }}</a>
-        </li>
-      </ul>
-    </div>
-  </div>
+  <ul class="tabs">
+      <!-- Switch then emit -->
+    <li class="tab col s3" v-for="tab in tabData"
+      :id="tab.key"
+      :key="tab.key"
+      @click="switchTag(tab, $event)">
+      <a href="#">{{ tab.title }}</a>
+    </li>
+  </ul>
 </template>
 <script>
+import * as M from 'materialize-css'
+
 export default {
   name: 'tab-view',
   props: {
-    tabData: Array
-  },
-  methods: {
-    switchPanel (tabInfo, $event) {
-      this.tabList = this.tabList.map(tab => tab.refPanel === tabInfo.refPanel)
-      if (this.refPanels.includes(tabInfo.name)) {
-        this.$emit('switchPanel', tabInfo.refPanel)
-      }
+    tabData: {
+      type: Array,
+      default: () => []
     }
   },
-  computed: {
-    refPanels () {
-      return this.tabList.map(tab => tab.refPanels)
-    },
-    tabList () {
-      return this.tabData.map((value, index) => Object.assign({ key: index }, value))
+  mounted () {
+    /** Non-reative property */
+    this.delegate = M.Tabs.init(this.$el)
+  },
+  methods: {
+    switchTag (tabInfo, $event) {
+      this.delegate.select(tabInfo.id)
+      this.$emit('switch-panel', { refPanel: tabInfo.refPanel })
     }
   }
 }
