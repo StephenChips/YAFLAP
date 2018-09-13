@@ -1,33 +1,24 @@
 <template>
     <div class="matching-panel">
-      <h3>{{ matchResult }}</h3>
+      <h3>{{ result }}</h3>
     <div class="input-field col s12">
-      <input id="matchbox" :placeholder="prompt" type="text" :class="inputFieldClass" v-model="inputedString">
+      <input id="matchbox" placeholder="Enter string here..." type="text"
+        @input="this.dispatch('matchString', $event)"
+        :value="string">
       <label for="matchbox">match</label>
     </div>
   </div>
 </template>
 <script>
-import { autometa } from '@/AutometaDecorator'
-import { MATCH_RESULT } from '@/Autometa'
-
 export default {
   name: 'matching-panel',
-  data () {
-    return {
-      inputedString: '',
-      prompt: 'Enter string here...'
-    }
-  },
   computed: {
-    matchResult () {
-      return autometa.matchWholeString(this.inputedString)
+    result () {
+      return this.$store.autometaStore.matchPair.result
     },
-    inputFieldClass () {
-      return this.matchResult === MATCH_RESULT.ok ? 'valid' : 'invalid'
+    string () {
+      return this.$store.autometaStore.matchPair.string
     }
   }
 }
 </script>
-<style scoped>
-</style>

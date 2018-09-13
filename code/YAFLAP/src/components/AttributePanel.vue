@@ -21,30 +21,14 @@
     </div>
 </template>
 <script>
-import { messageBus } from '@/utils/bus'
-import { autometa } from '@/AutometaDecorator'
-
+import { mapState } from 'vuex'
 export default {
   name: 'attribute-panel',
-  data () {
-    return {
-      autometaType: autometa.type,
-      nodeCount: autometa.nodeCount,
-      edgeCount: autometa.edgeCount
-    }
-  },
-  mounted () {
-    let that = this
-    messageBus.$on('update-edge-count', function (count) {
-      that.edgeCount = count
-    })
-    messageBus.$on('update-node-count', function (count) {
-      that.nodeCount = count
-    })
-    messageBus.$on('update-autometa-type', function (type) {
-      that.autometaType = type
-    })
-  }
+  computed: mapState({
+    autometaType: state => state.autometaStore.autoemtaType,
+    nodeCount: state => state.autometaStore.nodeCount,
+    edgeCount: state => state.autometaStore.edgeCount
+  })
 }
 </script>
 

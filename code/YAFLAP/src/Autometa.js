@@ -1,65 +1,44 @@
-/* STRUCTURE OF AUTOMETA
-AUTOMETA = [{
-  key: "node1",
-  outEdges: [...],
-  type: INITIAL,
-}, {
-  key: "node2",
-  outEdges: [...],
-  type: NORMAL,
-},..., {
-  key: "nodeN",
-  outEdges: [...],
-  type: FINAL,
-}]
-
-Each NODE has a UNIQUE NAME. the STRUCTURE of each EDGE shows below:
-{ key: { source: ..., target: ...}, transition: [...]}.
-The transition of a edge is a set of elements that either char or empty string.
-The empty string represent epsilon transition.
-e.g ['a', 'c', '$', '']
-When matching, if given string satisfied characters in the list, the transition will
-apply and the current state will be changed.
-When comparing two nodes, only when both of their source and target are same,
-can we consider them equals, besides, the transition doesnot effects the result of comparing.
-*/
-
 /*
-The mutable object below records changes the autometa has performed, providing
-functionalityof undo and redo. When a action completed, and generate a new
-autometa, it will be added intothis object.
-*/
+### DEFINITION OF Autometa
+Autometa = List<NodeRecord>
 
-import R from 'ramda'
+### DEFINITION OF NodeRecord
+NodeRecord = { key: String, outEdges: List<Edge> type: NODE_TYPE }
+Each BodeRecord has a UNIQUE NAME.
+
+### DEFINITION OF NODE
+A node is just a node record without `outEdges` property.
+Node = { key: String type: NODE_TYPE }
+Just like a NodeRecord, each node should have a unique name too.
+
+### DEFINITION OF EDGE
+Edge = { key: { source: String, target: String }, trainsition: List<String> }
+A edge's transition is either a single-char string or a empty string.
+The empty string represent the epsilon transition (ε).
+
+### SOME NECCESSARY ENUM TYPE
+NODE_TYPE, AUTOMETA_TYPE, MATCH_RESULT. They are defined below.
+*/
 
 export const NODE_TYPE = {
   normal: 'normal',
   initial: 'initial',
   final: 'final',
-  initFinal: 'init final' /* I node that is both final and initial */
+  initFinal: 'init final' // A node that is both final and initial
 }
-
-/* Except empty autometa, if a autometa is valid (either nfa or dfa),
-* it must at least has a final node and a unique initial node. The number of
-* normal node (neither initial nor final) is unlimited.
-* If a autometa is a DFA, accepting a character will cause the autometa
-* transmiting to another UNIQUE node (or state). Otherwise, if there are multiple
-* eligible nodes, it shoulb be a NFA.
-* Every autometa implicitly has a fail node, that when none of character match
-* transition, it will be trapped into the fail node. Once the autometa transmits
-* into the fail node, there are not any character can help it escaping this node.
-* */
 
 export const AUTOMETA_TYPE = {
   dfa: 'dfa',
   nfa: 'nfa',
   invalid: 'invalid',
-  empty: 'empty' /* autometa with zero edge and node. */
+  empty: 'empty' // Autometa with no node and edge.
 }
 
 export const MATCH_RESULT = {
   ok: 'ok',
   failed: 'failed',
+  // If autometa cannot get the correct matching result, return this value.
+  // For example, when the autometa is invalid, it always return unknown.
   unknown: 'unknown'
 }
 
@@ -73,475 +52,272 @@ export class Node {
 export class Edge {
   constructor (source, target, transition) {
     this.key = { source, target }
-    this.transition = transition
+    this.transition = transition || new Set()
   }
 }
 
-function NodeRecord (key, type, outEdges) {
-  this.key = key
-  this.type = type
-  this.outEdges = outEdges
-}
-NodeRecord.fromNode = function (node, outEdges) {
-  if (outEdges) {
-    return new NodeRecord(node.key, node.type, outEdges)
-  } else {
-    return new NodeRecord(node.key, node.type, [])
+class NodeRecord {
+  constructor (key, type, outEdges) {
+    this.key = key
+    this.type = type
+    this.outEdges = outEdges
   }
-}
-NodeRecord.prototype.toNode = function () {
-  return new Node(this.key, this.type)
-}
-
-const _nodeAttrs = Object.keys(new Node())
-const _edgeAttrs = Object.keys(new Edge())
-const _nodeRecordAttrs = Object.keys(new NodeRecord())
-
-/* Test if two node equal by comparing their keys */
-const nodeEquals = (thatNode, thisNode) => R.eqProps('key', thatNode, thisNode)
-/* Test if two edge equal by comparing their keys */
-const edgeEquals = (thatEdge, thisEdge) =>
-  R.eqProps('source', thatEdge.key, thisEdge.key) &&
-  R.eqProps('target', thatEdge.key, thisEdge.key)
-
-/**
-* add edge to autometa.
-* @param {object} autometa object of autometa
-* @param {object} newEdge  new edge, with properties source, target and transition
-* @return {object} a new autometa
-* @exception if edge exists, throw string 'Edge exists'.
-* @sig object -> object -> object | Error
-*/
-const addEdge = (edge, autometa) => {
-  if (hasEdge(edge.key, autometa)) {
-    throw new Error('Edge exists')
-  } else {
-    return R.map(R.when(
-      node => R.equals(node.key, edge.key.source),
-      node => new NodeRecord(node.key, node.type, R.append(edge, node.outEdges)) // cannot create by assoc.
-    ), autometa)
+  toNode () {
+    return new Node(this.key, this.type)
+  }
+  static fromNode (node, outEdges) {
+    return new NodeRecord(node.key, node.type, outEdges || [])
   }
 }
 
-/**
-* add node to autometa
-* @param {object} autometa [description]
-* @param {obejct} key  [description]
-* @return {object}
-* @exception if node exists, throw Error with string 'Edge exists'
-* @sig object -> object -> object | null
-*/
+const _NODE_PROPERTY_SET = new Set(Object.keys(new Node()))
+const _EDGE_PROPERTY_SET = new Set(Object.keys(new Edge()))
 
-const addNode = (node, autometa) => {
-  if (hasNode(node, autometa)) {
-    throw new Error('Node exists.')
+class Autometa {
+  constructor () {
+    this._nodeRecords = []
+    this._edgeCount = 0
+    this._nodeCount = 0
   }
-  return R.append(NodeRecord.fromNode(node), autometa)
-}
-
-/**
-* Change a edge's properties
-* @param  {object} autometa  the autometa
-* @param  {object} key       the source and target of a edge
-* @param  {object} newAttr   new value of edge's attributes
-* @return {object}           A new autometa
-* @sig object -> object -> object -> object | error
-* @exception if either source or target does not exist, throw Error with msg 'No such node.'
-* @exception if no edge matches given key, throw Error with msg 'No such edge.'
-* @exception if 'newAttr' has attribute source or target, throw Error with msg 'Cannot change primary key.'
-* @note
-* The attributes ource and target are the primary key of a edge, so it cannot be changed once it is
-* inserted into the autometa. Before changing a edge, you should specify its
-* source and target by passing it to the argument 'key', so that the function know
-* what to find. MULTIPLE NODE AT A TIME IS NOT SUPPORTED YET. The
-* argument newAttr specifies which attributes will be change. It has following sturcture:
-* {
-*   attr1: <new value>,
-*   attr2: <new value>
-* }
-* @example
-*/
-
-/* If any attribute does not in the attribute list, return false. */
-const hasUnknownAttribute = elAttrList => elObject => !R.all(R.contains(R.__, elAttrList), R.keys(elObject))
-
-const hasUnknownEdgeAttribute = hasUnknownAttribute(_edgeAttrs)
-const hasUnknownNodeAttribute = hasUnknownAttribute(_nodeAttrs)
-
-// FIXME: Add uniq condition
-const changeEdge = (attrs, autometa) => {
-  const updateEdge = edge => {
-    if (attrs.key.target !== edge.key.target) {
-      return edge
-    }
-    let newEdge = new Edge()
-    if (attrs.transition) {
-      attrs.transition = R.uniq(R.filter(R.is(String), attrs.transition))
-    }
-    _edgeAttrs.forEach(function (key) {
-      newEdge[key] = attrs.hasOwnProperty(key) ? attrs[key] : edge[key]
-    })
-    return newEdge
+  hasNode (key) {
+    return this._indexOfNodeRecord(key) !== -1
   }
-  const updateOutEdges = node => {
-    if (node.key === attrs.key.source) {
-      return new NodeRecord(node.key, node.type, R.map(updateEdge, node.outEdges))
+  hasEdge (key) {
+    let edgeIndex = this._indexOfEdge(key)
+    return edgeIndex.nodeRecordIndex !== -1 && edgeIndex.outEdgeIndex !== -1
+  }
+  insertNode (node) {
+    if (this.hasNode(node.key)) {
+      throw new Error('Node exists.')
     } else {
-      return node
+      this._validateNodeProperties(node, 'insert')
+      this._nodeRecords.push(NodeRecord.fromNode(node))
+    }
+    this._nodeCount++
+  }
+  insertEdge (edge) {
+    let indexOfEdge = this._indexOfEdge(edge.key)
+    if (indexOfEdge.nodeRecordIndex === -1) {
+      throw new Error('No such source node.')
+    } else if (indexOfEdge.outEdgeIndex !== -1) {
+      throw new Error('Edge exists')
+    } else {
+      this._validateEdgeProperies(edge, 'insert')
+      let nodeRecord = this._nodeRecords[indexOfEdge.nodeRecordIndex]
+      nodeRecord.outEdges.push(edge)
+    }
+    this._edgeCount++
+  }
+  updateNode (key, propObj) {
+    let nodeRecordIndex = this._indexOfNodeRecord(key)
+    if (nodeRecordIndex === -1) {
+      throw new Error('Node does not exists.')
+    } else {
+      let node
+      this._validateNodeProperties(propObj, 'update')
+
+      /** If all properties are valid, update them. */
+      node = this._nodeRecords[nodeRecordIndex]
+      for (let prop in propObj) {
+        node[prop] = propObj[prop]
+      }
     }
   }
+  updateEdge (key, propObj) {
+    let indexOfEdge = this._indexOfEdge(key)
+    if (indexOfEdge.nodeRecordIndex === -1) {
+      throw new Error('No such source node.')
+    } else if (indexOfEdge.outEdgeIndex === -1) {
+      throw new Error('Edge does not exists.')
+    } else {
+      this._validateEdgeProperies(propObj, 'update')
 
-  if (attrs.key === undefined) {
-    throw new Error('Require edge\'s source and target.')
-  } else if (hasUnknownEdgeAttribute(attrs)) {
-    throw new Error('attribute unknown.')
-  } else if (!hasEdge(attrs.key, autometa)) {
-    throw new Error('No such edge')
-  } else {
-    return R.map(updateOutEdges, autometa)
-  }
-}
-
-/**
-* @param  {object} autometa the autometa
-* @param  {string} key the key of a node
-* @param  {object} newAttr new value of node's attributes
-* @return {object} a new autometa
-* @exception if none of node matches given key, throw exception.
-* @exception if 'attrs' has unknown node attributes, throw exception.
-* @exception if key does not specified, throw exception.
-* @sig (object , Autometa) -> Autometa
-*
-* The attributes key is the primary key of a node, so it cannot be changed  it is
-* inserted into the autometa. Before changing a node, you should specify its
-* key by passing it to the argument 'key', so that the function know
-* what to find. CHANGING MULTIPLE NODE AT A TIME IS NOT SUPPORTED YET.
-*/
-
-const changeNode = (attrs, autometa) => {
-  const updateWhenNodeEquals = node => {
-    let newNodeRecord = new NodeRecord()
-    if (!nodeEquals(attrs, node)) {
-      /* Because attrs has key attribute, and nodeEquals compares two object's
-        * key attribute, so it works here. */
-      return node
+      /** If all properties are valid, update them. */
+      let nodeRecord = this._nodeRecords[indexOfEdge.nodeRecordIndex]
+      let edge = nodeRecord.outEdges[indexOfEdge.outEdgeIndex]
+      for (let prop in propObj) {
+        edge[prop] = propObj[prop]
+      }
     }
-    _nodeRecordAttrs.forEach(key => {
-      newNodeRecord[key] = attrs.hasOwnProperty(key) ? attrs[key] : node[key]
-    })
-    return newNodeRecord
   }
+  deleteNode (key) {
+    if (this.hasNode(key)) {
+      throw new Error('No such node.')
+    } else {
+      // Delete the node record first (include the node and its outgoing edges),
+      // then filter out its all incomming edges.
+      let indexOfNodeRecord = this._indexOfNodeRecord(key)
+      this._nodeRecords.splice(indexOfNodeRecord, 1)
+      for (let nodeRecord of this._nodeRecords) {
+        nodeRecord.outEdges = nodeRecord.outEdges.filter(edge => edge.target !== key.target)
+      }
+    }
+    this._nodeCount--
+  }
+  deleteEdge (key) {
+    if (this.hasEdge(key)) {
+      throw new Error('Edge does not exists.')
+    } else {
+      let indexOfEdge = this._indexOfEdge(key)
+      let nodeRecord = this._nodeRecords[indexOfEdge.nodeRecordIndex]
+      nodeRecord.outEdges.splice(indexOfEdge.outEdgeIndex, 1)
+    }
+    this._edgeCount--
+  }
+  findNode (key) {
+    let index = this._indexOfNodeRecord(key)
+    if (index === -1) {
+      return undefined
+    } else {
+      return this._nodeRecords[index].toNode()
+    }
+  }
+  findEdge (key) {
+    let indexOfEdge = this._indexOfEdge(key)
+    if (indexOfEdge.nodeRecordIndex === -1 || indexOfEdge.outEdgeIndex === -1) {
+      return undefined
+    } else {
+      let nodeRecord = this._nodeRecords[indexOfEdge.nodeRecordIndex]
+      return nodeRecord.outEdges[indexOfEdge.outEdge]
+    }
+  }
+  matchWholeString (str) {
+    let autometa = this
+    let epsilonPath = []
 
-  if (attrs.key === undefined) {
-    throw new Error('Require node\'s key.')
-  } else if (!hasNode(attrs, autometa)) {
-    throw new Error('No such node.')
-  } else if (hasUnknownNodeAttribute(attrs)) {
-    throw new Error('Unknown node attributes.')
-  } else {
-    return R.map(updateWhenNodeEquals, autometa)
-  }
-}
-/**
-* Find edges that match key
-* @param  {object} autometa the autometa
-* @param  {object} key the attribute to filter edges
-* @return {list}          list of edges
-* // TODO: implement stream instead of list
-* @sig object -> object -> object list | object
-* @node
-* If key equals string 'all', it will return all edges.
-* If only specify source, it will return all outgoing edges from that source.
-* If only specify target, it will return all incoming edges to that target.
-* If specify both, it will return a edge object rather than a list.
-* Otherwise return undefined.
-*/
+    function isStrMatch (string, currentNode) {
+      function epsilonClosure (nodeRef) {
+        // Using BFS scheme
+        let result = []
+        let visitedNodeRecordKeySet = new Set()
+        let nodeRecordQueue = [nodeRef]
 
-const findEdge = (key, autometa) => {
-  const byEdgeTarget = edge => edge.key.target === key.target
-
-  const findAllEdges = autometa => R.flatten(R.map(node => node.outEdges, autometa))
-  const findEdgesBySource = (key, autometa) => {
-    const ret = getNodeRecord(key.source, autometa)
-    return ret ? ret.outEdges : undefined
-  }
-  const findEdgeByKey = (key, autometa) => {
-    const edges = findEdgesBySource(key, autometa)
-    return edges ? R.find(byEdgeTarget, edges) : undefined
-  }
-  const findEdgesByTarget = (key, autometa) => {
-    const ret = R.map(node => R.filter(byEdgeTarget, node.outEdges), autometa)
-    return R.flatten(ret)
-  }
-
-  let result
-  if (!key) {
-    result = findAllEdges(autometa)
-  } else if (key.source && key.target) {
-    result = findEdgeByKey(key, autometa)
-  } else if (key.source) {
-    result = findEdgesBySource(key, autometa)
-  } else if (key.target) {
-    result = findEdgesByTarget(key, autometa)
-  } else {
-    return undefined
-  }
-
-  if (result && result.length === 1) {
-    result = result[0]
-  }
-  return result
-}
-
-const getNodeRecord = R.curry((key, autometa) => R.find(R.propEq('key', key), autometa))
-const findNode = (key, autometa) => {
-  if (!key) {
-    return R.map(nodeRecord => nodeRecord.toNode(), autometa)
-  } else {
-    const nodeRecord = getNodeRecord(key, autometa)
-    return nodeRecord ? nodeRecord.toNode() : undefined
-  }
-}
-
-// TODO: implement stream instead of list
-/**
-* Remove a edge
-* @param  {object} autometa  the autometa
-* @param  {object} key       the source and target of a edge
-* @return {object}           A new autometa
-* @sig object -> object -> object | error
-* @exception if no edge matches given key, throw Error with msg 'No such edge.'
-* @note
-* The attributes ource and target are the primary key of a edge, so it cannot be changed once it is
-* inserted into the autometa. Before removing a edge, you should specify its
-* source and target by passing it to the argument 'key', so that the function know
-* what to find. REMOVING MULTIPLE EDGE AT A TIME IS NOT SUPPORTED YET. The
-* argument newAttr specifies which attributes will be change. It has following sturcture:
-* {
-*   attr1: <new value>,
-*   attr2: <new value>
-* }
-*/
-const removeEdge = (key, autometa) => {
-  // Filter edge whose 'target' does not equals key's 'target'.
-  const filterEdgeByTarget = R.reject(edge => edge.key.target === key.target)
-  if (!hasEdge(key, autometa)) {
-    throw new Error('No such edge.')
-  } else {
-    return R.map(R.when(
-      node => R.equals(key.source, node.key),
-      node => {
-        const newOutEdges = filterEdgeByTarget(node.outEdges)
-        return new NodeRecord(node.key, node.type, newOutEdges)
-      }), autometa)
-  }
-}
-
-/**
-* Remove a node
-* @param  {object} autometa  the autometa
-* @param  {string} key       the key of the node
-* @return {object}           A new autometa
-* @sig object -> object -> object | error
-* @exception if no node matches given key, throw Error with msg 'No such node.'
-* @note
-* The attributes key are the primary key of a node, so it cannot be changed once it is
-* inserted into the autometa. Before removing a node, you should specify its
-* source and target by passing it to the argument 'key', so that the function know
-* what to find. REMOVING MULTIPLE EDGE AT A TIME IS NOT SUPPORTED YET.
-* {
-*   attr1: <new value>,
-*   attr2: <new value>
-* }
-* @example
-*/
-const removeNode = (key, autometa) => {
-  if (!hasNode(key, autometa)) {
-    throw new Error('No such node')
-  } else {
-    return R.reduce((acc, node) => {
-      if (node.key === key) {
-        return acc
+        while (nodeRecordQueue.length > 0) {
+          let currentNode = nodeRecordQueue.pop()
+          result.unshift(currentNode)
+          for (let edge of currentNode.outEdges) {
+            if (edge.transition.has('') && !visitedNodeRecordKeySet.has(edge.key.target)) {
+              let node = autometa.findNode(edge.key.target)
+              nodeRecordQueue.unshift(node)
+              visitedNodeRecordKeySet.add(node.key)
+            }
+          }
+        }
+        return result
+      } // end function epsilonClosure
+      // Main body of function execute
+      if (epsilonPath.includes(currentNode.key)) {
+        return false
+      } else if (string === '') {
+        return epsilonClosure(currentNode).some(node =>
+          node.type === NODE_TYPE.final ||
+          node.type === NODE_TYPE.initFinal
+        )
       } else {
-        // NOTE: newOutEdges contains every nodes in the old list except those target equals the one of key.
-        const newOutEdges = R.reject(edge => edge.key.target === key, node.outEdges)
-        return acc.concat([new NodeRecord(node.key, node.type, newOutEdges)])
-      }
-    }, [], autometa)
-  }
-}
-
-/**
-* Check if autometa has given edge
-* @param  {Object}  autometa the autometa
-* @param  {String}  key  key of the edge
-* @return {Boolean}      return true if has that edge
-*/
-const hasEdge = (key, autometa) => {
-  const node = getNodeRecord(key.source, autometa)
-  if (node) {
-    return R.any(edge => edge.key.target === key.target, node.outEdges)
-  } else {
-    return false
-  }
-}
-/**
-* Check if autometa has given node
-* @param  {Object}  autometa the autometa
-* @param  {String}  key  key of the edge
-* @return {Boolean}      return true if has that node
-*/
-const hasNode = (key, autometa) => {
-  let _key
-  if (R.type(key) === 'Object' && key.key) {
-    _key = key.key
-  } else if (R.type(key) === 'String') {
-    _key = key
-  } else {
-    return undefined
-  }
-
-  return R.any(R.propEq('key', _key), autometa)
-}
-
-const getTransitionCharSet = R.pipe(
-  R.prop('outEdges'),
-  R.map(R.prop('transition')),
-  R.flatten,
-  R.uniq
-)
-
-const getDestinations = (char, nodeRecord) => {
-  let eligibleEdges = R.filter(edge => R.contains(char, edge.transition), nodeRecord.outEdges)
-  return R.map(R.prop('target'), eligibleEdges)
-}
-
-const isNodeRecordDeterministic = nodeRecord => {
-  const solelyOneTargetEdge = char => getDestinations(char, nodeRecord).length === 1
-  const transCharSet = getTransitionCharSet(nodeRecord)
-  return !R.contains('', transCharSet) && R.all(solelyOneTargetEdge, transCharSet)
-}
-
-const isDFA = R.all(isNodeRecordDeterministic)
-
-const isValidAutometa = autometa => {
-  let nodeCountForEachType = {}
-  for (let nodeType of Object.values(NODE_TYPE)) {
-    nodeCountForEachType[nodeType] = 0
-  }
-  for (let nodeRecord of autometa) {
-    nodeCountForEachType[nodeRecord.type] += 1
-  }
-  const hasUniqueInitialNode =
-    (nodeCountForEachType[NODE_TYPE.initial] === 1 && nodeCountForEachType[NODE_TYPE.initFinal] === 0) ||
-    (nodeCountForEachType[NODE_TYPE.initial] === 0 && nodeCountForEachType[NODE_TYPE.initFinal] === 1)
-  const hasFinalNode = nodeCountForEachType[NODE_TYPE.final] > 0 || nodeCountForEachType[NODE_TYPE.initFinal] > 0
-
-  return hasUniqueInitialNode && hasFinalNode
-}
-
-const findInitialNode = R.find(node => node.type === NODE_TYPE.initial || node.type === NODE_TYPE.initFinal)
-const getAutometaType = autometa => {
-  if (isValidAutometa(autometa)) {
-    return isDFA(autometa) ? AUTOMETA_TYPE.dfa : AUTOMETA_TYPE.nfa
-  } else {
-    return AUTOMETA_TYPE.invalid
-  }
-}
-
-const epsilonClousure = (node, autometa) => {
-  let visited = {}
-  let nodeSet = [node]
-  let result = []
-  while (!R.isEmpty(nodeSet)) {
-    let currentNode = nodeSet.pop()
-    result.push(currentNode)
-    for (var edge of currentNode.outEdges) {
-      if (!visited[edge.key.target]) {
-        visited[edge.key.target] = true
-        if (R.contains('', edge.transition)) {
-          nodeSet.push(getNodeRecord(edge.key.target, autometa))
+        for (let edge of currentNode.outEdges) {
+          let targetNode = autometa._findNodeRecord(edge.key.target)
+          if (edge.transition.has('')) {
+            epsilonPath.push(targetNode.key)
+            if (isStrMatch(string, targetNode)) return true
+            epsilonPath.pop()
+          }
+          if (edge.transition.has(string[0])) {
+            if (isStrMatch(string.slice(1), targetNode)) return true
+          }
         }
+        return false
       }
-    }
-  }
-  return result
-}
-const matchWholeString = R.curry((string, autometa) => {
-  const execute = (string, autometa, currentNode, path) => {
-    if (R.contains(currentNode.key, path)) {
-      return false
-    }
-    if (R.isEmpty(string)) {
-      let finalNodes = epsilonClousure(currentNode, autometa)
-      return R.any(node => node.type === NODE_TYPE.final || node.type === NODE_TYPE.initFinal, finalNodes)
+    } // End function isStrMatch
+    // Main body of function matchWholeString
+    if (this.type === AUTOMETA_TYPE.invalid || this.type === AUTOMETA_TYPE.empty) {
+      return MATCH_RESULT.unknown
+    } else if (isStrMatch(str, this._initialNode)) {
+      return MATCH_RESULT.ok
     } else {
-      let isMatched = false
-      for (var edge of currentNode.outEdges) {
-        for (var char of edge.transition) {
-          if (char === '') {
-            isMatched = execute(
-              string,
-              autometa,
-              getNodeRecord(edge.key.target, autometa),
-              R.append(currentNode.key, path)
-            )
-          } else if (char === string[0]) {
-            isMatched = execute(
-              string.slice(1),
-              autometa,
-              getNodeRecord(edge.key.target, autometa),
-              []
-            )
+      return MATCH_RESULT.failed
+    }
+  }
+  get nodeCount () {
+    return this._nodeCount
+  }
+  get edgeCount () {
+    return this._edgeCount
+  }
+  get type () {
+    function hasFinalNode (autometa) {
+      return autometa._nodeRecords.findIndex(nodeRecord =>
+        nodeRecord.type === NODE_TYPE.initFinal ||
+        nodeRecord.type === NODE_TYPE.final
+      ) !== -1
+    } // End function hasFinalNode
+    function isNodeRecordDeterministic (nodeRecord) {
+      let transitionSet = new Set()
+      for (let edge of nodeRecord.outEdges) {
+        for (let char of edge.transition) {
+          if (char === '' || transitionSet.has(char)) {
+            return false
           } else {
-            isMatched = false
-          }
-          if (isMatched) {
-            return true
+            transitionSet.add(char)
           }
         }
       }
-      return false
+      return true
+    } // End function isNodeRecordDeterministic
+    if (this._nodeRecords.length === 0) {
+      return AUTOMETA_TYPE.empty
+    } else if (!this._initialNode || !hasFinalNode(this)) {
+      return AUTOMETA_TYPE.invalid
+    } else if (this._nodeRecords.every(isNodeRecordDeterministic)) {
+      return AUTOMETA_TYPE.dfa
+    } else {
+      return AUTOMETA_TYPE.nfa
     }
   }
-  if (isValidAutometa(autometa)) {
-    let result = execute(string, autometa, findInitialNode(autometa), [])
-    return result ? MATCH_RESULT.ok : MATCH_RESULT.failed
-  } else {
-    return MATCH_RESULT.unknown
-  }
-})
 
-export var autometa = {
-  _auto: [],
-  nodeEquals: nodeEquals,
-  edgeEquals: edgeEquals,
-  hasNode: function (key) { return hasNode(key, this._auto) },
-  hasEdge: function (key) { return hasEdge(key, this._auto) },
-  insertNode: function (node) { this._auto = addNode(node, this._auto) },
-  insertEdge: function (edge) {
-    this._auto = addEdge(edge, this._auto)
-  },
-  updateNode: function (node) { this._auto = changeNode(node, this._auto) },
-  updateEdge: function (edge) { this._auto = changeEdge(edge, this._auto) },
-  deleteNode: function (key) {
-    this._auto = removeNode(key, this._auto)
-  },
-  deleteEdge: function (key) {
-    this._auto = removeEdge(key, this._auto)
-  },
-  findNode: function (key) { return findNode(key, this._auto) },
-  findEdge: function (key) { return findEdge(key, this._auto) },
-  matchWholeString: function (str) {
-    return matchWholeString(str, this._auto)
-  },
-  get type () {
-    return getAutometaType(this._auto)
-  },
-  get nodeCount () {
-    return this._auto.length
-  },
-  get edgeCount () {
-    return this._auto.reduce((acc, nodeRecord) => acc + nodeRecord.outEdges.length, 0)
+  // This private property return the first initial node
+  // it find, dispite if the autometa is valid.
+  // If it cannot find a initial node record, it will return
+  // undefined instead.
+  get _initialNode () {
+    return this._nodeRecords.find(nodeRecord =>
+      nodeRecord.type === NODE_TYPE.initFinal ||
+      nodeRecord.type === NODE_TYPE.initial
+    )
+  }
+  _indexOfNodeRecord (key) {
+    return this._nodeRecords.findIndex(nodeRecord => nodeRecord.key === key)
+  }
+  _indexOfEdge (key) {
+    let nodeRecordIndex = this._indexOfNodeRecord(key.source)
+    let outEdgeIndex
+    if (nodeRecordIndex !== -1) {
+      let nodeRecord = this._nodeRecords[nodeRecordIndex]
+      outEdgeIndex = nodeRecord.outEdges.findIndex(edge => edge.key.target === key.target)
+    } else {
+      nodeRecordIndex = outEdgeIndex = -1
+    }
+    return { nodeRecordIndex, outEdgeIndex }
+  }
+  _validateEdgeProperies (edge, oprKind) {
+    /** Check if there are unknown properties in the propObj. */
+    let unknownProp = Object.keys(edge).find(prop => !_EDGE_PROPERTY_SET.has(prop))
+    if (unknownProp) throw new Error(`Unknown edge's property ${unknownProp}`)
+    if (oprKind === 'update' && edge.key) throw new Error('Cannot update edge\'s key.')
+    if (edge.transition) {
+      for (let entry of edge.transition) {
+        if (typeof entry !== 'string') {
+          throw new Error(`Invalid edge's transition ${entry}, which should be a string`)
+        } else if (entry !== '' && entry.length !== 1) {
+          throw new Error(`Invalid edge's transiiton ${entry}, whose length should be 1.`)
+        }
+      }
+    }
+  }
+  _validateNodeProperties (node, oprKind) {
+    let unknownProp = Object.keys(node).find(prop => !_NODE_PROPERTY_SET.has(prop))
+    if (unknownProp) throw new Error(`Unknown node's property ${unknownProp}`)
+    if (oprKind === 'update' && node.key) throw new Error('Cannot update node\'s key')
   }
 }
+
+export let autometa = new Autometa()
