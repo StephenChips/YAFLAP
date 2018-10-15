@@ -1,12 +1,9 @@
 export let defaultValue = {
   nodeLabel: 'node',
-  edgeLabel: 'ε'
-}
-export let nodeStyle = {
-  nodeCircle: {
-    radius: 10
-  },
-  nodeLabel: {
-    textAnchor: 'middle'
+  edgeLabel: 'ε',
+  editMode: 'edit',
+  node: {
+    radius: 10,
+    label: 'node'
   }
 }

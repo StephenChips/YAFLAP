@@ -16,3 +16,9 @@ export class KeyGenerator {
     return this.count++
   }
 }
+
+export function constance (x) {
+  return function () {
+    return x
+  }
+}

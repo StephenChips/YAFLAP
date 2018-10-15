@@ -12,10 +12,9 @@ export var BOARD_ELEMENT = {
   node: 'node',
   edge: 'edge'
 }
-export var LINE_STYLE = {
-  straightLine: 'straight line',
-  upwardCurve: 'upward curve',
-  downwardCurve: 'downward curve',
+export var PATH_TYPE = {
+  straight: 'straight line',
+  curve: 'curve',
   ring: 'ring'
 }
 export var NODE_TYPE = {
