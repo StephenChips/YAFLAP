@@ -2,48 +2,50 @@ import { defaultValue } from '@/settings'
 import { LinkBehavior } from '@/LinkBehavior'
 import D3 from 'd3'
 import { eCode, Exception } from '@/utils/error'
-import { NODE_TYPE, PATH_TYPE } from '@/utils/enum'
-import { KeyGenerator } from '@/utils/helpers'
 
-const keyGenerator = new KeyGenerator()
+export const E_CODE = {
+  invalidGraph: 'invlid graph'
+}
+export const NODE_TYPE = {
+  dfa: 'dfa',
+  nfa: 'nfa',
+  invalid: 'invalid',
+  empty: 'empty'
+}
+const PATH_TYPE = {
+  straight: 'straight',
+  curve: 'curve',
+  ring: 'ring'
+}
 
+const helpers = {
+  isInitialNode: node => node.type === NODE_TYPE.initFinal || node.type === NODE_TYPE.initial,
+  callIfDefined: (fn, thisArg) => {
+    let fnArgs = Array.prototype.slice.call(arguments, 2)
+    if (fn !== undefined) {
+      return fn.call(thisArg, fnArgs)
+    }
+  },
+  setAttributes: (el, attrObj) => {
+    for (let attr in attrObj) {
+      el.setAttribute(attr, attrObj[attr])
+    }
+  },
+  appendChilds: (parentEl, childEls) => {
+    for (var child in childEls) {
+      parentEl.appendChild(child)
+    }
+  }
+}
 class Node {
-  constructor (key, type, pos, label) {
+  constructor (key, type, label, pos) {
     this.key = key
     this.type = type
-    this.pos = pos
     this.label = label
+    this.pos = pos
   }
-  get indicator () {
-    if (this.type !== 'initial' && this.type !== 'initFinal') {
-      return undefined
-    } else {
-      return {
-        style: {
-          d: `
-            M ${this.pos.x - defaultValue.node.radius} ${this.pos.y}
-            L ${this.pos.x - 2 * defaultValue.node.radius} ${this.pos.y - defaultValue.node.radius}
-            L ${this.pos.x - 2 * defaultValue.node.radius} ${this.pos.y + defaultValue.node.radius}
-            Z
-          `,
-          fill: '#000'
-        }
-      }
-    }
-  }
-  get style () {
-    var stroke = '333333'
-    var strokeWidth = 10
-    switch (this.type) {
-      case 'initial':
-        return { fill: '#003344', stroke, strokeWidth }
-      case 'final':
-        return { fill: '#330044', stroke, strokeWidth }
-      case 'normal':
-        return { fill: '#334400', stroke, strokeWidth }
-      case 'initFinal':
-        return { fill: '#003344', stroke, strokeWidth }
-    }
+  get id () {
+    return this.key
   }
 }
 
@@ -53,108 +55,46 @@ class Edge {
    * @param {String} label Edge's label
    * @param {String} pathType optional, path's type of the edge
    */
-  constructor (key, label, pathType) {
-    this.key = {
-      ...key,
-      toString () {
-        return this.key.source.key + '->' + this.key.target.key
-      }
-    }
+  constructor (key, label) {
+    this.key = key
     this.label = label
-    this.pathType = pathType
   }
-  get path () {
-    function _distance (source, target) {
-      var dx = target.x - source.x
-      var dy = target.y - source.y
-      return Math.sqrt(dx * dx + dy * dy)
-    }
-
-    var sourceNodePos = this.key.source.pos
-    var targetNodePos = this.key.target.pos
-    var rx, ry
-
-    switch (this.pathType) {
-      case PATH_TYPE.straight:
-        return `
-          M ${sourceNodePos.x} ${targetNodePos.y}
-          L ${targetNodePos.x} ${targetNodePos.y}
-        `
-      case PATH_TYPE.curve:
-        rx = ry = _distance(sourceNodePos, targetNodePos)
-        return `
-          M ${sourceNodePos.x} ${sourceNodePos.y}
-          A ${rx} ${ry} 0 0,1 ${targetNodePos.x} ${targetNodePos.y}
-        `
-      case PATH_TYPE.ring:
-        return `
-           M ${sourceNodePos.x} ${sourceNodePos.y}
-           l -5 -8
-           a 6 6 0 1 1 10 0
-           z
-        `
-    }
-    return undefined
+  // Property accessors
+  get id () {
+    return this.key.source.key + '->' + this.key.target.key
   }
 }
 
-export class Position {
-  constructor (x, y) {
-    this.x = x
-    this.y = y
+class Graph {
+  constructor (nodes, edges) {
+    if (Graph.isGraphValid()) {
+      this.nodes = nodes
+      this.edges = edges
+    } else {
+      throw new Exception(eCode.invalidGraph)
+    }
   }
-}
-
-export class GraphController {
-  constructor (vue, editMode) {
-    this._vue = vue
-    this._editingNode = null
-    this._editingEdge = null
-    this._d3Elements = {}
-    this._vueComponents = {}
-    this._listeners = {}
-    this._linkBehavior = new LinkBehavior()
-    this._dragEvent = D3.drag()
-
-    this._nodes = []
-    this._edges = []
-
-    this._init(editMode)
-  }
-
-  get editMode () {
-    return this._editMode
-  }
-  set editMode (mode) {
-    this._editMode = mode
-    this._setupEventsAgain()
+  isGraphValid () {
+    return this.edges.any(edge =>
+      this.nodes.includes(edge.key.source) &&
+      this.nodes.includes(edge.key.target)
+    )
   }
   addNode (node) {
-    if (this.findNode(node) !== undefined) {
+    if (this.findNode(node.key) !== undefined) {
       throw new Exception(eCode.NODE_EXISTS)
     } else {
       this._nodes.push(new Node(node))
-      this._redraw()
     }
   }
   /**
    * @param {Object} edge Plain object with edge's properties
    */
   addEdge (edge) {
-    if (this.findEdge(edge) !== undefined) {
+    if (this.findEdge(edge.key) !== undefined) {
       throw new Exception(eCode.EDGE_EXISTS)
     } else {
-      let reversedEdge = this._edges.find(e =>
-        e.key.source === edge.key.target &&
-        e.key.target === edge.key.source)
-      let pathType
-      if (reversedEdge) {
-        pathType = edge.pathType = PATH_TYPE.curve
-      } else {
-        pathType = PATH_TYPE.straight
-      }
-      this._edges.push(new Edge({ ...edge, pathType }))
-      this._redraw()
+      this._edges.push(edge)
     }
   }
   /**
@@ -174,8 +114,10 @@ export class GraphController {
       throw new Exception(eCode.NODE_NOT_EXISTS)
     } else {
       let deletedNode = this._nodes.splice(index, 1)[0]
-      this._edges.filter(edge => edge.key.source !== deletedNode && edge.key.target !== deletedNode)
-      this._redraw()
+      this._edges.filter(edge =>
+        edge.key.source !== deletedNode &&
+        edge.key.target !== deletedNode
+      )
     }
   }
   /**
@@ -195,14 +137,7 @@ export class GraphController {
     if (index === -1) {
       throw new Exception(eCode.EDGE_NOT_EXISTS)
     } else {
-      let deletedEdge = this._edges.splice(index, 1)[0]
-      let reversedEdge = this._edges.find(edge =>
-        edge.key.source === deletedEdge.key.target &&
-        edge.key.target === deletedEdge.key.source)
-      if (reversedEdge) {
-        reversedEdge.pathType = PATH_TYPE.straight
-      }
-      this._redraw()
+      this._edges.splice(index, 1)
     }
   }
   findNode (arg) {
@@ -232,7 +167,6 @@ export class GraphController {
           edge[propName] = props[propName]
         }
       })
-      this._redraw()
     }
   }
   updateNode (args, props) {
@@ -245,201 +179,348 @@ export class GraphController {
           node[propName] = props[propName]
         }
       })
-      this._redraw()
     }
   }
-  _selectD3Element () {
-    this._d3Elements.board = D3.select('#' + this.vue.editBoardProps.boardId)
-    this._d3Elements.nodeGroup = D3.select('#' + this.vue.editBoardProps.nodeGroupId)
-    this._d3Elements.edgeGroup = D3.select('#' + this.vue.editBoardProps.edgeGroupId)
-    this._d3Elements.nodes = this._d3Elements.nodeGroup.selectAll('svg:g')
-    this._d3Elements.edges = this._d3Elements.edgeGroup.selectAll('svg:g')
-    this._d3Elements.auxPath = D3.select('#' + this.vue.editBoardProps.auxPathsId)
+  setGraph (graph) {
+    this.nodes = graph.nodes
+    this.edges = graph.edges
+  }
+}
 
+export class VisualGraph {
+  constructor (root, props) {
+    // VisualGraph's Properties
+    this._root = root
+    this._graph = new Graph(props.nodes, props.edges)
+    this._props = props
+    this._mouseEventHdlrs = {
+      node: { click: undefined, dblcilck: undefined, contextmenu: undefined, dragstart: undefined, dragend: undefined },
+      edge: { click: undefined, dblcilck: undefined, contextmenu: undefined },
+      board: { click: undefined, dblcilck: undefined, contextmenu: undefined },
+      link: { start: undefined, end: undefined }
+    }
+    this._idOf = {
+      root: 'board',
+      edgeGroup: 'edge-group',
+      nodeGroup: 'node-group',
+      auxPath: 'aux-path',
+      indicatorMarker: 'indicator-marker',
+      indicator: 'indicator',
+      node: n => `node#${n.key}`,
+      edge: e => `edge#${e.key.source.key}->${e.key.target.key}`
+    }
+    this._classOf = {
+      node: 'node',
+      edge: 'edge',
+      nodeLabel: 'node-label',
+      nodeCircle: 'node-circle',
+      nodeOverlay: 'node-overlay',
+      nodeIndicator: 'node-indicator',
+      edgePath: 'edge-path',
+      edgePathText: 'edge-path-text'
+    }
+    this._edgePathStyleOf = {}
+    this._isEventChanged = false
+    this._isDataChanged = false
+    this._linkBehavior = new LinkBehavior()
+
+    this._initEdgePathStyle()
+    this._redraw()
+
+    // Setup events after we create all graph's elements
+    this._initMouseEvents()
+    if (props.canDrag) this._enableDragging()
+    if (props.canLink) this._enableLinking()
+  }
+  addNode (node) {
+    this._graph.addNode(new Node(node.key, node.type, node.label, node.pos))
     this._redraw()
   }
-  _selectVueElement () {
-    this._vueComponents = {}
-    for (let refName in this.vue.$ref) {
-      this._vueComponents[refName] = this.vue.$ref[refName]
+  /**
+   * @param {Object} edge Plain object with edge's properties
+   */
+  addEdge (edge) {
+    this._graph.addEdge(new Edge(edge.key, edge.label))
+    this._redraw()
+  }
+  /**
+   * @param {String | Number} arg Either node's key or index
+   * @returns undefined if not found
+   * @returns node if found
+   */
+  deleteNode (args) {
+    this._graph.deleteNode(args)
+    this._redraw()
+  }
+  /**
+   * @param {Object | Number} arg Either edge's key or index
+   */
+  deleteEdge (args) {
+    this._graph.deleteEdge(args)
+    this._redraw()
+  }
+  findNode (args) {
+    this._graph.findNode(args)
+  }
+  findEdge (args) {
+    this._graph.findEdge(args)
+  }
+  updateEdge (args, props) {
+    this._graph.updateEdge(args, props)
+    this._redraw()
+  }
+  updateNode (args, props) {
+    this._graph.updateNode(args, props)
+    this._redraw()
+  }
+  setGraph (graph) {
+    this._graph.setGraph(graph)
+    this._redraw()
+  }
+  canDrag (val) {
+    if (val !== undefined && val !== this._canDrag) {
+      this._canDrag = val
+      if (val) {
+        this._enableDragging()
+      } else {
+        this._disableDragging()
+      }
+    }
+    return this._canDrag
+  }
+  canLink (val) {
+    if (val !== undefined && val !== this._canDrag) {
+      this._canLink = val
+      if (val) {
+        this._enableLinking()
+      } else {
+        this._disableLinking()
+      }
+    }
+    return this._canLink
+  }
+  on (elName, eventName, eventFn) {
+    if (VisualGraph._VALID_EVENTS[elName][eventName]) {
+      this._mouseEventHdlrs[elName][eventName] = eventFn
+      this._isEventChanged = true
     }
   }
 
-  _enableGeneralEvents () {
-    var that = this
-    function selectMenuItem (value) {
-      /* Property nodeMenuProps.target should be not undefined */
-      if (value in NODE_TYPE) {
-        let targetKey = that.vue.nodeMenuProps.target.key
-        that.updateNode(targetKey, { type: value })
-      }
-      /* Close menu after update */
-      that.vue.nodeMenuProps = {
-        pos: { x: 0, y: 0 },
-        visible: false,
-        target: undefined
-      }
-      that.vue.nodeMenuProps.visible = false
+  _getNodeStyle (node) {
+    var stroke = '#333333'
+    var strokeWidth = '10px'
+    var fill, indicator
+    switch (this.type) {
+      case 'initial':
+        fill = '#003344'
+        break
+      case 'final':
+        fill = '#330044'
+        break
+      case 'normal':
+        fill = '#334400'
+        break
+      case 'initFinal':
+        fill = '#003344'
+        indicator = this._getNodeIndicatorStyle(node)
+        break
     }
-    this._vueComponents.optionSetInitial.$on('submit', selectMenuItem)
-    this._vueComponents.optionSetFinal.$on('submit', selectMenuItem)
-    this._vueComponents.optionSetNormal.$on('submit', selectMenuItem)
-    this._vueComponents.optionSetInitFinal.$on('submit', selectMenuItem)
+    return { fill, stroke, strokeWidth, indicator }
   }
-  _enableDraggingNode () {
-    function beforeDragging () {
-      D3.select(this).raise().classed('draging', true)
+  _getEdgeStyle (edge) {
+    return {
+      pathFn: this._edgePath.bind(this),
+      stroke: '#000',
+      strokeWidth: '10px',
+      d: this._edgePath(edge)
     }
-    function dragging (node) {
+  }
+  _getEdgePath (edge) {
+    function _distance (source, target) {
+      var dx = target.x - source.x
+      var dy = target.y - source.y
+      return Math.sqrt(dx * dx + dy * dy)
+    }
+
+    var sourceNodePos = edge.key.source.pos
+    var targetNodePos = edge.key.target.pos
+    var rx, ry
+
+    switch (this.pathType) {
+      case PATH_TYPE.straight:
+        return `
+          M ${sourceNodePos.x} ${targetNodePos.y}
+          L ${targetNodePos.x} ${targetNodePos.y}
+        `
+      case PATH_TYPE.curve:
+        rx = ry = _distance(sourceNodePos, targetNodePos)
+        return `
+          M ${sourceNodePos.x} ${sourceNodePos.y}
+          A ${rx} ${ry} 0 0,1 ${targetNodePos.x} ${targetNodePos.y}
+        `
+      case PATH_TYPE.ring:
+        return `
+           M ${sourceNodePos.x} ${sourceNodePos.y}
+           l -5 -8
+           a 6 6 0 1 1 10 0
+           z
+        `
+    }
+    return undefined
+  }
+  _getNodeIndicatorStyle (node) {
+    var hasIndicator = node =>
+      node.type === NODE_TYPE.initial &&
+      node.type === NODE_TYPE.initFinal
+
+    return hasIndicator(node) ? {
+      style: {
+        d: `
+          M ${this.pos.x - defaultValue.node.radius} ${this.pos.y}
+          L ${this.pos.x - 2 * defaultValue.node.radius} ${this.pos.y - defaultValue.node.radius}
+          L ${this.pos.x - 2 * defaultValue.node.radius} ${this.pos.y + defaultValue.node.radius}
+          Z
+        `,
+        fill: '#000'
+      }
+    } : undefined
+  }
+  // Helpers
+  _initEdgePathStyle () {
+    var bucketOfEdges = []
+    function edgeArrayToEdgeBucket (edge) {
+      var isSamePair = (thisPair, thatPair) => thisPair.includes(thatPair[0]) && thisPair.includes(thatPair[1])
+      for (let entry of this) {
+        let nodePair = Object.values(edge.key).map(node => node.key)
+        if (isSamePair(entry.nodePair, nodePair)) {
+          entry.edges.push(edge)
+        } else {
+          bucketOfEdges.push({ nodePair, edges: [ edge ] })
+        }
+      }
+    }
+    function toEdgePathStyleObj ({ nodePair, edges }, acc) {
+      var firstEdge = edges[0]
+      var secondEdge = edges[1]
+      if (edges.length === 1) {
+        return Object.assign(acc, {
+          [firstEdge.id]: (nodePair.source === nodePair.target) ? PATH_TYPE.ring : PATH_TYPE.straight
+        })
+      } else {
+        return Object.assign(acc, {
+          [firstEdge.id]: PATH_TYPE.curve,
+          [secondEdge.id]: PATH_TYPE.curve
+        })
+      }
+    }
+
+    this._edgePathStyleOf =
+      this._graph.edges
+        .map(edgeArrayToEdgeBucket)
+        .reduce(toEdgePathStyleObj, {})
+  }
+  _enableDragging () {
+    var that = this
+    var dragStarted = function (node) {
+      D3.select(this).raise().classed('draging', true)
+      helpers.callIfDefined(that._mouseEventHdlrs.drag.start, this, {
+        node,
+        sourceDOM: this
+      })
+    }
+    var dragging = function (node) {
       node.pos = { x: D3.event.x, y: D3.event.y }
       this._redraw()
     }
-    function endDragging () {
+    var dragFinished = function (node) {
       D3.select(this).raise().classed('dragging', false)
+      helpers.callIfDefined(that._mouseEventHdlrs.drag.end, this, {
+        node,
+        sourceDOM: this
+      })
     }
-    this._dragEvent
-      .on('start', beforeDragging)
+
+    this._d3Elements.nodes.call(this._d3Drag
+      .on('start', dragStarted)
       .on('drag', dragging)
-      .on('end', endDragging)
-    this._d3Elements.nodes.call(this._dragEvent)
+      .on('end', dragFinished))
   }
-  _enableLinkingNode () {
+  _disableDragging () {
+    this._d3Elements.nodes.on('.drag', null)
+  }
+  _enableLinking () {
     var that = this
-    function linkStarted (evt) {
+
+    function linkStarted (event) {
       that._d3Elements.auxPath
-        .attr('d', `M ${evt.point.x} ${evt.point.y} Z`)
+        .attr('d', `M ${event.point.x} ${event.point.y} Z`)
         .style('display', '')
+      helpers.callIfDefined(this._mouseEventHdlrs.link.start, that, event)
     }
-    function linking (evt) {
-      let sourceNodePos = evt.source.pos
-      let currentMousePos = evt.point
+    function linking (event) {
+      let sourceNodePos = event.source.pos
+      let currentMousePos = event.point
       that._d3Elements.auxPath
         .attr('d', `M ${sourceNodePos.x} ${sourceNodePos.y} L ${currentMousePos.x} ${currentMousePos.y}`)
     }
-    function linkFinished (evt) {
+    function linkFinished (event) {
       that._d3Elements.auxPath.style('display', 'none')
-      if (evt.target) {
-        that.addEdge({
-          key: { source: evt.source, target: evt.target },
-          label: defaultValue.edge.label
-        })
-      }
+      helpers.callIfDefined(this._mouseEventHdlrs.link.end, that, event)
     }
     this._linkBehavior
-      .container(document.getElementById(this.vue.editBoardProps.boardId))
+      .subject(this._d3Elements.nodes)
+      .container(this._d3Elements.board)
       .on('start', linkStarted)
       .on('link', linking)
       .on('end', linkFinished)
+      .enable()
   }
-  _enableChangingNodeType () {
-    var that = this
-    new Promise(function rightClickAndOpenMenu (resolve) {
-      this._d3Elements.nodes.on('contextmenu', function (node) {
-        that.vue.nodeMenuProps = {
-          pos: { x: node.pos.x, y: node.pos.y },
-          visible: true,
-          target: node
-        }
-        that.vue.overlayProps.visible = true
-        resolve()
-      })
-    }).then(function clickOverlayAndCloseMenu () {
-      that.vue._vueComponents.overlay.$once('click', function () {
-        that.vue.nodeMenuProps = {
-          pos: { x: 0, y: 0 },
-          visible: false,
-          target: undefined
-        }
-        that.vue.overlayProps.visible = false
-        that.vue.nodeMenuProps.visible = false
-      })
-    })
+  _disableLinking () {
+    this._linkBehavior.disable()
   }
-  _enableEditingNode () {
-    var that = this
-    this._d3Elements.nodes.on('dblclick.board', function (datum) {
-      /* Show edit field above the node */
-      let point = D3.mouse(document.getElementById(that.vue.editBoardProps.boardId))
-      that.vue.nodeEditFieldProps = {
-        target: datum,
-        value: '',
-        pos: { x: point[0], y: point[1] },
-        visible: true
-      }
+  _createGroups () {
+    /*
+      <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="10" refx="0" refy="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L0,6 L9,3 z" fill="#f00" />
+        </marker>
+      </defs>
+      <g :id="${this._id.node}"></g>
+      <g :id="${this._id.edge}"></g>
+      <path :id="${this._id.auxPath}" />
+    */
+    var root = document.getElementById(this.id.root)
 
-      /* Update node */
-      this._vueComponents.overlay.$once('click', function () {
-        var targetKey = that.vue.nodeEditFieldProps.target.key
-        that.updateNode(targetKey, {
-          label: that.vue.nodeEditFieldProps.value
-        })
-        that.vue.overlayProps.visible = false
-        that.vue.nodeEditFieldProps.visible = false
-      })
-    })
-  }
-  _enableEditingEdge () {
-    let that = this
-    new Promise(function showEdgeEditField (resolve) {
-      let that = this
-      this._d3Elements.edges.on('dblclick.board', function (edge) {
-        /* Show edit field above the edge */
-        let point = D3.mouse(document.getElementById(that.vue.editBoardProps.boardId))
-        that.vue.edgeEditFieldProps = {
-          target: edge,
-          value: '',
-          pos: { x: point[0], y: point[1] },
-          visible: true
-        }
-        that.vue.overlayProps.visible = true
-        resolve(edge)
-      })
-    }).then(function closeEditFieldAndUpdateEdge () {
-      this._vueComponents.overlay.$once('click', function () {
-        var targetKey = that.vue.edgeEditFieldProps.target.key
-        var label = that.vue.edgeEditFieldProps.value
+    var fragment = document.createDocumentFragment()
+    var indicatorDefs = document.createElement('defs')
+    var indicatorMarker = document.createElement('marker')
+    var indicatorPath = document.createElement('path')
+    var nodeGroup = document.createElement('g')
+    var edgeGroup = document.createElement('g')
+    var auxPath = document.createElement('path')
 
-        this.updateEdge(targetKey, { label })
-        that.vue.edgeEditFieldProps.visible = false
-        that.vue.overlayProps.visible = false
-      })
+    indicatorMarker.id = this._idOf['indicatorMarker']
+    nodeGroup.id = this._idOf['nodeGroup']
+    edgeGroup.id = this._idOf['edgeGroup']
+    auxPath.id = this._idOf['auxPath']
+
+    indicatorDefs.appendChild(indicatorMarker).append(indicatorPath)
+
+    helpers.appendChilds(fragment, [indicatorDefs, nodeGroup, edgeGroup, auxPath])
+    helpers.setAttributes(indicatorMarker, {
+      markerWith: 10,
+      refx: 0,
+      refy: 3,
+      orient: 'auto',
+      markerUnits: 'strokeWidth'
     })
-  }
-  _enableAddingNode () {
-    var that = this
-    this._d3Elements.board.on('click', function () {
-      let mouse = D3.mouse(document.getElementById(that.vue.editBoardProps.boardId))
-      this.addNode({
-        key: keyGenerator.generate(),
-        label: defaultValue.node.label,
-        type: NODE_TYPE.normal,
-        pos: { x: mouse[0], y: mouse[1] }
-      })
+    helpers.setAttributes(indicatorPath, {
+      d: 'M0,0 L0,6 L9,3 z',
+      fill: '#000'
     })
-  }
-  _enableAddingEdge () {
-    this._linkBehavior.enable()
-  }
-  _enableDeletingNode () {
-    let that = this
-    this._d3Elements.nodes.on('click.board', function (node) {
-      that.deleteNode(node.key)
-    })
-  }
-  _enableDeletingEdge () {
-    let that = this
-    this._d3Elements.edges.on('click.board', function (edge) {
-      that.deleteEdge(edge.key)
-    })
+    root.appendChild(fragment)
   }
   _redraw () {
-  /*
-   * <g>
-   *   <circle cx="" cy"" r="" /> <!-- transparent overlay, for binding events ->
-   *   <text x="" y="" text-anchor="middle">{{ text }}</text>
-   *   <circle cx="" cy="" r="" stroke="" fill="" />
-   * </g>
-   */
     this._redrawNode()
     this._redrawEdge()
   }
@@ -455,52 +536,68 @@ export class GraphController {
       .data(this._nodes, node => node.key)
   }
   _createNodeElement (selection) {
+  /*
+   * <g>
+   *   <circle cx="" cy"" r="" /> <!-- transparent overlay, for binding events ->
+   *   <text x="" y="" text-anchor="middle">{{ text }}</text>
+   *   <circle cx="" cy="" r="" stroke="" fill="" />
+   * </g>
+   */
     let newNodes = selection.enter().append('g')
-    newNodes.append('circle').classed('node-overlay') // Overlay for event binding
-    newNodes.append('text').classed('node-label') // Label
-    newNodes.append('circle').classed('node-shape') // Actual Shape
-    newNodes.filter(node => node.type === 'initial').append('path').classed('node-indicator') // Indicator
+    newNodes.append('circle').classed(this._classOf['nodeOverlay']) // Overlay for event binding
+    newNodes.append('text').classed(this._classOf['nodeLabel']) // Label
+    newNodes.append('circle').classed(this._classOf['nodeShape']) // Actual Shape
+    newNodes.filter(helpers.isInitialNode)
+      .append('path').classed('node-indicator', true) // Indicator
 
     this.updateNodeElement(newNodes)
   }
   _updateNodeElement (selection) {
     selection.each(function (datum) {
       var node = this
-      var nodeLabel = this.getElementsByClassName('.node-label')[0]
-      var nodeCircle = this.getElementsByClassName('.node-shape')[0]
-      var nodeOverlay = this.getElementByClassName('.node-overlay')[0]
-      var nodeIndicator
-      if (datum.type === 'initial' || datum.type === 'initFinal') {
-        nodeIndicator = this.getElementByClassName('.node-indicator')[0]
-      }
+      var nodeLabel = this.getElementsByClassName(this._classOf['nodeLabel'])[0]
+      var nodeCircle = this.getElementsByClassName(this._classOf['nodeShape'])[0]
+      var nodeOverlay = this.getElementByClassName(this._classOf['nodeOverlay'])[0]
+      var nodeIndicator = helpers.isInitialNode(datum)
+        ? this.getElementByClassName(this._classOf['nodeIndicator'])[0]
+        : undefined
 
       node.id = `node-${datum.key}`
       nodeLabel.textContent = node.label
 
-      nodeOverlay.setAttribute('cx', datum.pos.x)
-      nodeOverlay.setAttribute('cy', datum.pos.y)
-      nodeOverlay.setAttribute('r', defaultValue.node.radius)
+      helpers.setAttributes(nodeOverlay, {
+        'cx': datum.pos.x,
+        'cy': datum.pos.y,
+        'r': defaultValue.node.radius
+      })
+      helpers.setAttributes(nodeCircle, {
+        'cx': datum.pos.x,
+        'cy': datum.pos.y,
+        'r': defaultValue.node.radius,
+        'fill': datum.style.fill,
+        'stroke': datum.style.stroke,
+        'strokeWidth': datum.style.strokeWidth
+      })
+      helpers.setAttributes(nodeLabel, {
+        'text-anchor': 'middle',
+        'x': datum.pos.x,
+        'y': datum.pos.y
+      })
 
-      nodeCircle.setAttribute('cx', datum.pos.x)
-      nodeCircle.setAttribute('cy', datum.pos.y)
-      nodeCircle.setAttribute('r', defaultValue.node.radius)
-      nodeCircle.setAttribute('fill', datum.style.color)
-      nodeCircle.setAttribute('stroke', datum.style.stroke)
-      nodeCircle.setAttribute('stroke-width', datum.style.strokeWidth)
-
-      nodeLabel.setAttribute('text-anchor', 'middle')
-      nodeLabel.setAttribute('x', datum.pos.x)
-      nodeLabel.setAttribute('y', datum.pos.y)
-
-      nodeIndicator.setAttribute('p', datum.indicator.style.p)
-      nodeIndicator.setAttribute('fill', datum.indicator.style.fill)
+      if (nodeIndicator !== undefined) {
+        var indicatorStyle = this._getNodeIndicatorStyle()
+        helpers.setAttributes({
+          'd': indicatorStyle.d,
+          'fill': indicatorStyle.fill
+        })
+      }
     })
   }
   _removeNodeElement (selection) {
     selection.exit().remove()
   }
   _redrawEdge () {
-    var changedSelection = this._d3Elements.edges.data(this._edges, edge => edge.key.toString())
+    var changedSelection = this._d3Elements.edges.data(this._edges, edge => edge.id)
     this._createEdgeElement(changedSelection)
     this._updateEdgeElement(changedSelection)
     this._removeEdgeElement(changedSelection)
@@ -508,7 +605,7 @@ export class GraphController {
     // The old selection is expired once new items are inserted
     // or the joined data changed, thus we need to select it again.
     this._d3Elements.edges = this._d3Elements.edgeGroup.selectAll('g')
-      .data(this._nodes, node => node.key.toString())
+      .data(this._nodes, node => node.id)
   }
   _createEdgeElement (selection) {
     /*
@@ -520,62 +617,75 @@ export class GraphController {
      * </g>
      */
     let newEdges = selection.enter().append('g')
-    newEdges.append('path').classed('edge-path', true)
-    newEdges.append('text').append('textPath').classed('edge-text-path', true)
+    newEdges.append('path').classed(this._classOf['edgePath'], true)
+    newEdges.append('text').append('textPath').classed(this._classOf['edgeTextPath'], true)
 
     this._updateEdgeElement(newEdges)
   }
   _updateEdgeElement (selection) {
     selection.each(function (datum) {
       var edge = this
-      var path = this.getElementByClassName('.edge-path')[0]
-      var textPath = this.getElementByClassName('.edge-text-path')[0]
+      var path = this.getElementByClassName(this._classOf['edgePath'])[0]
+      var textPath = this.getElementByClassName(this._classOf['edgeTextPath'])[0]
 
-      edge.id = `edge#${datum.key.toString()}`
-      path.id = `path#${datum.key.toString()}`
-      path.setAttribute('d', datum.path)
-      path.setAttribute('marker-end', 'url(#arrow)')
+      edge.id = `edge#${datum.id}`
+      path.id = `path#${datum.id}`
+      path.setAttribute('d', this._getEdgePath(path))
+      path.setAttribute('marker-end', `url(#${this._idOf['indicator']})`)
 
-      textPath.setAttribute('href', `path#${datum.key.toString()}`)
+      textPath.setAttribute('href', 'path#' + datum.id)
       textPath.textContent = datum.label
     })
   }
   _removeEdgeElement (selection) {
     selection.exit().remove()
   }
-  _setupEventsAgain () {
-    this.disableAllEvents()
-    this._setupEvents()
-  }
-  _disableAllEvents () {
-    Object.keys(this._d3Elements).forEach(key => {
-      this._d3Elements[key].on('.board', null)
-    })
-    this._d3Elements.nodes.on('.drag', null)
-    this._linkBehavior.disable()
-  }
-  _setupEvents () {
-    this._enableGeneralEvents()
-    switch (this.editMode) {
-      case 'edit':
-        this._enableDraggingNode()
-        this._enableAddingNode()
-        break
-      case 'add':
-        this._enableLinkingNode()
-        this._enableEditingNode()
-        this._enableEditingEdge()
-        break
-      case 'delete':
-        this._enableDeletingNode()
-        this._enableDeletingEdge()
-        break
+  _initMouseEvents () {
+    var that = this
+    var mouseEventNames = ['click', 'dblclick', 'contextmenu']
+    var involvedElements = ['nodes', 'edges', 'board']
+
+    for (let el of involvedElements) {
+      for (let event of mouseEventNames) {
+        this._d3Elements[el].on(event, function (data) {
+          let eventObj, mouse
+
+          switch (el) {
+            case 'nodes':
+              eventObj = { sourceDOM: this, node: data }
+              break
+            case 'edges':
+              eventObj = { sourceDOM: this, edge: data }
+              break
+            case 'board':
+              mouse = D3.mouse(that._d3Elements.board.node())
+              eventObj = {
+                sourceDOM: this,
+                pos: { x: mouse[0], y: mouse[1] }
+              }
+              break
+          }
+          helpers.callIfDefined(that._mouseEventHdlrs.nodes[event], that, eventObj)
+        })
+      }
+    }
+    for (let eventName in this._mouseEventHdlrs['node']) {
+      this._d3Elements.nodes.on(eventName, function (node) {
+        helpers.callIfDefined(that._mouseEventHdlrs.nodes[eventName], that, {
+          node: Object.assign({}, node),
+          sourceDOM: this
+        })
+      })
     }
   }
-  _init (editMode) {
-    this._selectD3Element()
-    this._selectVueElement()
-    this._editMode = editMode || defaultValue.editMode
-    this._setupEvents()
-  }
+}
+
+/**
+ * Callback function parameters
+ */
+VisualGraph._VALID_EVENTS = {
+  node: ['click', 'dblclick', 'contextmenu', 'dragstart', 'dragend'], // node srcEvent
+  edge: ['click', 'dblclick', 'contextmenu'], // edge (with source and target ndoe info copy fron list), srcEvent
+  board: ['click', 'dblclick', 'contextmenu'], // pos (clicked pos), srcEvent
+  link: ['start', 'end'] // source, target, mouse, srcEvent link.start
 }

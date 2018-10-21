@@ -3,8 +3,8 @@ import { eCode, Exception } from '@/utils/error'
 
 export class LinkBehavior {
   constructor () {
-    this._selection = null // D3 selection
-    this._container = null // selection's container
+    this._subject = null // The target to be linked.
+    this._container = null // subject's container
     this.listeners = {
       start: { fn: undefined, capture: false },
       link: { fn: undefined, capture: false },
@@ -18,83 +18,87 @@ export class LinkBehavior {
     }
     return this
   }
+  subject (subject) {
+    this._subject = subject
+    return this
+  }
   container (container) {
     if (!container) {
       return this._container
-    } else if (container instanceof HTMLElement) {
+    } else {
       this._container = container
     }
     return this
   }
-  enable (selection) {
+  enable () {
     var that = this
     var end = that.listeners.end
     var link = that.listeners.link
     var start = that.listeners.start
 
-    function finishLinking () {
+    var finishLinking = function () {
       that.event.type = 'end'
-      if (end.fn) end.fn(new Link(that.event))
+      that.event.originEvent = D3.event
+      if (end.fn) end.fn(Object.assign({}, that.event))
 
       that.event = undefined
-      that._selection.on('mousemove.link', null)
-      that._selection.on('mouseup.link', null)
-      that._selection.on('mouseenter.link', null)
-      that._selection.on('mouseout.link', null)
+      that._subject.on('mousemove.link', null)
+      that._subject.on('mouseup.link', null)
+      that._subject.on('mouseenter.link', null)
+      that._subject.on('mouseout.link', null)
 
       that._container.on('mousemove.link', null)
       that._container.on('mouseup.link', null)
     }
-    function moveMouse () {
-      var point = D3.mouse(that.getContainer(this))
+    var moveMouse = function () {
+      var point = D3.mouse(that._container.node())
       that.event.type = 'link'
       that.event.point = { x: point[0], y: point[1] }
-      if (link.fn) link.fn(new Link(that.event))
+      that.event.originEvent = D3.event
+      if (link.fn) link.fn(Object.assign({}, that.event))
     }
-    function setTargetData (targetData) {
-      that.evnet.target = targetData
+    var setTarget = function (target) {
+      that.event.target = target
+      that.event.targetDOM = this
     }
-    function clearTargetData () {
-      that.evnet.target = undefined
+    var clearTarget = function () {
+      that.event.target = undefined
+      that.event.targetDOM = undefined
     }
 
-    if (!this._container || !(this._container instanceof Element)) {
-      throw new Exception(new Exception(eCode.CONFIG_ERROR))
+    if (!this._container || this._container.size() !== 1 || !this._subject) {
+      throw new Exception(eCode.CONFIG_ERROR)
     }
-    this._selection = selection
-    this._selection.on('mousedown.link', function (datum) {
-      var elCoord = D3.mouse(this)
+    this._subject.on('mousedown.link', function (node) {
+      var elCoord = D3.mouse(that._container.node())
 
       /** Initialize linking events */
-      that._selection.on('mouseenter.link', setTargetData)
-      that._selection.on('mouseout.link', clearTargetData)
-      that._selection.on('mousemove.link', moveMouse, link.capture)
-      that._selection.on('mouseup.link', finishLinking, end.capture)
+      that._subject.on('mouseenter.link', setTarget)
+      that._subject.on('mouseout.link', clearTarget)
+      that._subject.on('mousemove.link', moveMouse, link.capture)
+      that._subject.on('mouseup.link', finishLinking, end.capture)
 
       that._container.on('mousemove.link', moveMouse, link.capture)
       that._container.on('mouseup.link', finishLinking, end.capture)
 
-      that.event = new Link('start', datum, datum, { x: elCoord[0], y: elCoord[1] })
-      if (start.fn) start.fn(new Link(that.event))
+      that.event = new Link('start', node, node, this, this, that._container.node(), { x: elCoord[0], y: elCoord[1] }, D3.event)
+      if (start.fn) start.fn(Object.assign({}, that.event))
     })
   }
   disable () {
-    this._selection.on('.link', null)
+    this._subject.on('.link', null)
+    this._container.on('.link', null)
   }
 }
 class Link {
-  constructor (type, source, target, point) {
-    if (arguments.length === 1 && arguments[0] instanceof Link) {
-      /** Copy constructor */
-      this.type = arguments[0].type
-      this.source = arguments[0].source
-      this.target = arguments[0].target
-      this.point = arguments[0].point
-    } else {
-      this.type = type
-      this.source = source
-      this.target = target
-      this.point = point
-    }
+  constructor (type, source, target, sourceDOM, targetDOM, containerDOM, point, originEvent) {
+    this.type = type
+    this.source = source
+    this.target = target
+    this.sourceDOM = sourceDOM
+    this.targetDOM = targetDOM
+    this.containerDOM = containerDOM
+    this.point = point
+    this.originEvent = originEvent
   }
 }
