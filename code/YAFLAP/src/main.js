@@ -8,4 +8,5 @@ var vm = new Vue({
   store,
   components: { App }
 })
+
 console.log('Vue instance is created')

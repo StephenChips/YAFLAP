@@ -1,11 +1,8 @@
 <template>
-<ul class="drop-menu"
-  :class="dropMenuClass"
-  :style="dropMenuStyle">
-  <li @click="$emit('set-node-type', NODE_TYPE.initial)">Set Initial</li>
-  <li @click="$emit('set-node-type', NODE_TYPE.final)">Set Final</li>
-  <li @click="$emit('set-node-type', NODE_TYPE.normal)">Set Normal</li>
-  <li @click="$emit('set-node-type', NODE_TYPE.initFinal)">Set Initial-Final</li>
+<ul class="drop-menu">
+  <li class="drop-menu-item" v-for="item of items" :Key="item.key" @click="$emit('click-item', item.key)">
+    {{ item.title }}
+  </li>
 </ul>
 </template>
 <script>
@@ -14,9 +11,10 @@ import { NODE_TYPE } from '@/utils/enum'
 export default {
   name: 'drop-menu',
   props: {
-    dropMenuStyle: Object,
-    dropMenuClass: Object,
-    menuClass: Object
+    items: {
+      type: Array,
+      default: () => []
+    }
   },
   created () {
     this.NODE_TYPE = NODE_TYPE
@@ -24,4 +22,24 @@ export default {
 }
 </script>
 <style scoped>
+.drop-menu-item {
+  width: 100%;
+  padding: 2px;
+  font-size: 14px;
+  text-align: center;
+  border-bottom: 1px black solid;
+}
+
+.drop-menu-item:hover {
+  background-color:#EAEAEA;
+}
+
+.drop-menu {
+  width: 150px;
+  border: 1px #AE20BB solid;
+  margin-bottom: 10px;
+  background-color: #FFFFFF;
+  border-radius: 3px;
+  box-shadow: 3px 3px 0 black;
+}
 </style>

@@ -1,23 +1,23 @@
 /*
-### DEFINITION OF Autometa
-Autometa = List<NodeRecord>
+### DEFINITION OF Automata
+Automata = List<NodeRecord>
 
 ### DEFINITION OF NodeRecord
 NodeRecord = { key: String, outEdges: List<Edge> type: NODE_TYPE }
-Each BodeRecord has a UNIQUE NAME.
+Each BodeRecord should has a UNIQUE KWY.
 
 ### DEFINITION OF NODE
 A node is just a node record without `outEdges` property.
 Node = { key: String type: NODE_TYPE }
-Just like a NodeRecord, each node should have a unique name too.
+Just like a NodeRecord, each node should have a unique key too.
 
 ### DEFINITION OF EDGE
 Edge = { key: { source: String, target: String }, trainsition: List<String> }
 A edge's transition is either a single-char string or a empty string.
-The empty string represent the epsilon transition (ε).
+An empty string represent the epsilon transition (ε).
 
 ### SOME NECCESSARY ENUM TYPE
-NODE_TYPE, AUTOMETA_TYPE, MATCH_RESULT. They are defined below.
+NODE_TYPE, AUTOMETA_TYPE, MATCH_RESULT, which are are defined below.
 */
 
 export const NODE_TYPE = {
@@ -31,14 +31,14 @@ export const AUTOMETA_TYPE = {
   dfa: 'dfa',
   nfa: 'nfa',
   invalid: 'invalid',
-  empty: 'empty' // Autometa with no node and edge.
+  empty: 'empty' // Automata with no node and edge.
 }
 
 export const MATCH_RESULT = {
   ok: 'ok',
   failed: 'failed',
-  // If autometa cannot get the correct matching result, return this value.
-  // For example, when the autometa is invalid, it always return unknown.
+  // If automata cannot get the correct matching result, return this value.
+  // For example, when the automata is invalid, it always return unknown.
   unknown: 'unknown'
 }
 
@@ -73,7 +73,7 @@ class NodeRecord {
 const _NODE_PROPERTY_SET = new Set(Object.keys(new Node()))
 const _EDGE_PROPERTY_SET = new Set(Object.keys(new Edge()))
 
-class Autometa {
+export class Automata {
   constructor () {
     this._nodeRecords = []
     this._edgeCount = 0
@@ -141,7 +141,7 @@ class Autometa {
     }
   }
   deleteNode (key) {
-    if (this.hasNode(key)) {
+    if (!this.hasNode(key)) {
       throw new Error('No such node.')
     } else {
       // Delete the node record first (include the node and its outgoing edges),
@@ -149,13 +149,19 @@ class Autometa {
       let indexOfNodeRecord = this._indexOfNodeRecord(key)
       this._nodeRecords.splice(indexOfNodeRecord, 1)
       for (let nodeRecord of this._nodeRecords) {
-        nodeRecord.outEdges = nodeRecord.outEdges.filter(edge => edge.target !== key.target)
+        nodeRecord.outEdges = nodeRecord.outEdges.filter(edge => edge.key.target !== key)
       }
     }
     this._nodeCount--
+
+    var count = 0
+    for (var record of this._nodeRecords) {
+      count += record.outEdges.length
+    }
+    this._edgeCount = count
   }
   deleteEdge (key) {
-    if (this.hasEdge(key)) {
+    if (!this.hasEdge(key)) {
       throw new Error('Edge does not exists.')
     } else {
       let indexOfEdge = this._indexOfEdge(key)
@@ -182,9 +188,8 @@ class Autometa {
     }
   }
   matchWholeString (str) {
-    let autometa = this
+    let automata = this
     let epsilonPath = []
-
     function isStrMatch (string, currentNode) {
       function epsilonClosure (nodeRef) {
         // Using BFS scheme
@@ -197,7 +202,7 @@ class Autometa {
           result.unshift(currentNode)
           for (let edge of currentNode.outEdges) {
             if (edge.transition.has('') && !visitedNodeRecordKeySet.has(edge.key.target)) {
-              let node = autometa.findNode(edge.key.target)
+              let node = automata._findNodeRecord(edge.key.target)
               nodeRecordQueue.unshift(node)
               visitedNodeRecordKeySet.add(node.key)
             }
@@ -205,6 +210,7 @@ class Autometa {
         }
         return result
       } // end function epsilonClosure
+
       // Main body of function execute
       if (epsilonPath.includes(currentNode.key)) {
         return false
@@ -215,9 +221,10 @@ class Autometa {
         )
       } else {
         for (let edge of currentNode.outEdges) {
-          let targetNode = autometa._findNodeRecord(edge.key.target)
+          let targetNode = automata._findNodeRecord(edge.key.target)
+          console.log(currentNode, targetNode)
           if (edge.transition.has('')) {
-            epsilonPath.push(targetNode.key)
+            epsilonPath.push(currentNode.key)
             if (isStrMatch(string, targetNode)) return true
             epsilonPath.pop()
           }
@@ -229,7 +236,8 @@ class Autometa {
       }
     } // End function isStrMatch
     // Main body of function matchWholeString
-    if (this.type === AUTOMETA_TYPE.invalid || this.type === AUTOMETA_TYPE.empty) {
+    var type = this.calculateType()
+    if (type === AUTOMETA_TYPE.invalid || type === AUTOMETA_TYPE.empty) {
       return MATCH_RESULT.unknown
     } else if (isStrMatch(str, this._initialNode)) {
       return MATCH_RESULT.ok
@@ -237,15 +245,23 @@ class Autometa {
       return MATCH_RESULT.failed
     }
   }
-  get nodeCount () {
-    return this._nodeCount
+  _findNodeRecord (key) {
+    var nodeRec = this._nodeRecords.find(nodeRecord => nodeRecord.key === key)
+    return nodeRec
   }
-  get edgeCount () {
-    return this._edgeCount
-  }
-  get type () {
-    function hasFinalNode (autometa) {
-      return autometa._nodeRecords.findIndex(nodeRecord =>
+
+  calculateType () {
+    function initialNodeCount (automata) {
+      var count = 0;
+      for (var record of automata._nodeRecords) {
+        if (record.type === NODE_TYPE.initial || record.type === NODE_TYPE.initFinal) {
+          count++;
+        }
+      }
+      return count;
+    }
+    function hasFinalNode (automata) {
+      return automata._nodeRecords.findIndex(nodeRecord =>
         nodeRecord.type === NODE_TYPE.initFinal ||
         nodeRecord.type === NODE_TYPE.final
       ) !== -1
@@ -265,7 +281,7 @@ class Autometa {
     } // End function isNodeRecordDeterministic
     if (this._nodeRecords.length === 0) {
       return AUTOMETA_TYPE.empty
-    } else if (!this._initialNode || !hasFinalNode(this)) {
+    } else if (initialNodeCount(this) !== 1 || !hasFinalNode(this)) {
       return AUTOMETA_TYPE.invalid
     } else if (this._nodeRecords.every(isNodeRecordDeterministic)) {
       return AUTOMETA_TYPE.dfa
@@ -273,9 +289,18 @@ class Autometa {
       return AUTOMETA_TYPE.nfa
     }
   }
+  _hasMoreThanOneInitialNodes () {
+    return this._nodeRecords
+  }
+  get nodeCount () {
+    return this._nodeCount
+  }
+  get edgeCount () {
+    return this._edgeCount
+  }
 
   // This private property return the first initial node
-  // it find, dispite if the autometa is valid.
+  // it find, dispite if the automata is valid.
   // If it cannot find a initial node record, it will return
   // undefined instead.
   get _initialNode () {
@@ -319,5 +344,3 @@ class Autometa {
     if (oprKind === 'update' && node.key) throw new Error('Cannot update node\'s key')
   }
 }
-
-export let autometa = new Autometa()

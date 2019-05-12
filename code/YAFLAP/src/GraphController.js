@@ -1,4 +1,4 @@
-import { defaultValue } from '@/settings'
+import { defaultValue } from '@/utils/settings'
 import { LinkBehavior } from '@/LinkBehavior'
 import D3 from 'd3'
 import { eCode, Exception } from '@/utils/error'

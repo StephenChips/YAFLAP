@@ -1,38 +1,48 @@
 <template>
   <div class="fixed-action-btn">
-    <a href="#" class="btn-floating blue darken-1 btn-large" id="current-mode-button">
-      <i class="large material-icons">edit</i>
+    <a href="#" :class="['btn-floating', 'btn-large'].concat(this.currentTitledButton.colorClass)">
+      <i class="large material-icons">{{ this.currentTitledButton.icon }}</i>
     </a>
     <ul>
-      <li @click="updateEditMode(EDIT_MODE.add)">
-        <a class="btn-floating amber"><i class="material-icons">add</i></a>
-      </li>
-      <li @click="updateEditMode(EDIT_MODE.delete)">
-        <a class="btn-floating red"><i class="material-icons">clear</i></a>
-      </li>
-      <li @click="updateEditMode(EDIT_MODE.edit)">
-        <a class="btn-floating blue darken-1"><i class="material-icons">edit</i></a>
+      <li v-for="button of buttons" :key="button.mode">
+        <a :class="['btn-floating'].concat(button.colorClass)" @click="$emit('input', button.mode)">
+          <i class="material-icons">{{ button.icon }}</i>
+        </a>
       </li>
     </ul>
   </div>
 </template>
 <script>
-import * as M from 'materialize-css'
-import { EDIT_MODE } from '@/utils/enum'
 export default {
   name: 'edit-mode-button',
-  created () {
-    this.EDIT_MODE = EDIT_MODE
+  props: {
+    value: {
+      type: String,
+      default: 'add'
+    }
+  },
+  data () {
+    return {
+      buttons: [
+        { mode: 'create', icon: 'add', colorClass: ['amber'], },
+        { mode: 'delete', icon: 'cancel', colorClass: ['red'] },
+        { mode: 'edit', icon: 'edit', colorClass: ['blue', 'darken-1'] }
+      ]
+    }
   },
   mounted () {
-    this.delegate = M.FloatingActionButton.init(this.$el, {
+    this.fab = M.FloatingActionButton.init(this.$el, {
       direction: 'top',
       hoverEnabled: true
     })
   },
-  methods: {
-    updateEditMode (mode) {
-      this.$store.commit('updateEditMode', mode)
+  destoryed () {
+    this.fab.destory();
+  },
+  computed: {
+    currentTitledButton () {
+      var result = this.buttons.find(button => button.mode === this.value)
+      return result
     }
   }
 }

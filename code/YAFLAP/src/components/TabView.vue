@@ -1,11 +1,10 @@
 <template>
   <ul class="tabs">
-      <!-- Switch then emit -->
-    <li class="tab col s3" v-for="tab in tabData"
-      :id="tab.key"
-      :key="tab.key"
-      @click="switchTag(tab, $event)">
-      <a href="#">{{ tab.title }}</a>
+    <li v-for="tab of tabs" class="tab-item"
+      :class="{ 'tab-item-selected': value === tab.id }"
+      v-bind:key="tab.id"
+      @click="$emit('input', tab.id)">
+      <a href="javascript:void(0);">{{ tab.title }}</a>
     </li>
   </ul>
 </template>
@@ -15,14 +14,14 @@ import * as M from 'materialize-css'
 export default {
   name: 'tab-view',
   props: {
-    tabData: {
+    tabs: {
       type: Array,
       default: () => []
+    },
+    value: {
+      type: String,
+      default: ''
     }
-  },
-  mounted () {
-    /** Non-reative property */
-    this.delegate = M.Tabs.init(this.$el)
   },
   methods: {
     switchTag (tabInfo, $event) {
@@ -33,5 +32,31 @@ export default {
 }
 </script>
 <style>
+.tabs {
+  display: flex;
+  justify-content:space-evenly;
+  align-items: center;
+  flex-wrap: nowrap;
+  height: 40px;
+  box-shadow: 1px 1px 1px black;
+  border-radius: 3px;
+}
+.tab-item {
+  box-sizing: border-box;
+  font-size: 18px;
+  background: #bbbbbb;
+  border: 2px solid brown;
+  height: 100%;
+  flex-grow: 1;
+  flex-shrink: 1;
+  text-align: center;
+  line-height: 30px;
+}
 
+.tab-item a {
+  color: whitesmoke;
+}
+.tab-item-selected {
+  background: #777777;
+}
 </style>
