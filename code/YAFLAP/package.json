@@ -22,6 +22,8 @@
     "graphlib-dot": "^0.6.2",
     "materialize-css": "^1.0.0",
     "ramda": "^0.26.1",
+    "svg-pan-zoom": "^3.6.0",
+    "viz.js": "^2.1.2",
     "vue": "^2.5.2",
     "vue-router": "^3.0.1",
     "vuex": "^3.0.1"

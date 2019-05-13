@@ -9,8 +9,6 @@
   </ul>
 </template>
 <script>
-import * as M from 'materialize-css'
-
 export default {
   name: 'tab-view',
   props: {

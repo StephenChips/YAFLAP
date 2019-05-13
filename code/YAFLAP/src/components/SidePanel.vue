@@ -21,18 +21,13 @@ export default {
   data () {
     return {
       title: 'YAFLAP',
-      websideDesc: 'Yet Another Formal Lanuage and Autometa Package',
+      websideDesc: 'Yet Another Formal Lanuage and Automata Package',
       currentSidePanel: 'AttributePanel',
       tabs: [
         { id: 'AttributePanel', title: 'Attribute' },
         { id: 'MatchingPanel', title: 'Match' },
         { id: 'GeneratorPanel', title: 'Generator' }
       ],
-    }
-  },
-  methods: {
-    switchPanel (eventArgs) {
-      this.activePanel = eventArgs.refPanel
     }
   },
   components: { TabView, AttributePanel, MatchingPanel, GeneratorPanel }

@@ -113,9 +113,9 @@ class Node {
   }
 }
 
-function _getEdgeClickEventHandler(options) {
-  var hasClickedBefore = false;
-  var timerId;
+function _getEdgeClickEventHandler (options) {
+  var hasClickedBefore = false
+  var timerId
   return function (event) {
     if (hasClickedBefore) {
       options.handleDblClick.call(this, event)
@@ -130,7 +130,6 @@ function _getEdgeClickEventHandler(options) {
     }
   }
 }
-
 
 // produce following events:
 /**
@@ -155,9 +154,9 @@ export default {
     this._handleEdgeClickEvent = _getEdgeClickEventHandler({
       handleClick (event) {
         if (this.state === 'delete') {
-          var source = event.target.getAttribute('data-edge-source');
-          var target = event.target.getAttribute('data-edge-target');
-          this.removeEdge(source, target);
+          var source = event.target.getAttribute('data-edge-source')
+          var target = event.target.getAttribute('data-edge-target')
+          this.removeEdge(source, target)
         }
       },
       handleDblClick (event) {
@@ -221,11 +220,11 @@ export default {
         var targetNodeId = event.target.getAttribute('data-node-id')
         if (this.state === 'create' && this.isFreeEdgeVisible) {
           try {
-          this.addEdge({
-            source: this.selectedNode.id,
-            target: targetNodeId,
-            label: 'ε'
-          })
+            this.addEdge({
+              source: this.selectedNode.id,
+              target: targetNodeId,
+              label: 'ε'
+            })
           } catch (e) {
             this.$emit('error', e)
           }
@@ -245,15 +244,15 @@ export default {
       }
     },
     _handleNodeDblClickEvent (event) {
-      event.preventDefault();
-      event.stopPropagation();
+      event.preventDefault()
+      event.stopPropagation()
       if (this.state === 'edit' && this.editState !== 'edit-node-label') {
         this._startEditingNode(event)
       }
     },
     _handleNodeContextMenuEvent (event) {
-      event.preventDefault();
-      event.stopPropagation();
+      event.preventDefault()
+      event.stopPropagation()
 
       if (this.state === 'edit' && this.editState !== 'open-node-menu') {
         this._openNodeMenu(event)
@@ -287,20 +286,21 @@ export default {
       }
     },
     _handleEdgeClickEvent (event) {
-      event.preventDefault();
-      event.stopPropagation();
-      _handleEdgeClickEvent.call(this, event);
+      event.preventDefault()
+      event.stopPropagation()
+      // eslint-disable-next-line
+      _handleEdgeClickEvent.call(this, event)
     },
     _handleOverlayClickEvent () {
-      event.preventDefault();
-      event.stopPropagation();
+      event.preventDefault()
+      event.stopPropagation()
       if (this.state === 'edit') {
         if (this.editState === 'edit-edge-label' || this.editState === 'edge-node-label') {
           this._commitInput()
         } else {
           this._terminateInput()
         }
-      } 
+      }
     },
     _handleMenuClickItemEvent (key) {
       this.menuInput = key
@@ -329,7 +329,7 @@ export default {
     },
     _startMovingNode (event) {
       this.isMovingNode = true
-      this._setSelectedNodeFromEvent(event);
+      this._setSelectedNodeFromEvent(event)
     },
     _stopMovingNode () {
       this.isMovingNode = false
@@ -378,16 +378,16 @@ export default {
       this._setEditFieldPosition(event)
     },
     _setEditFieldPosition (event) {
-      var mouse = this._getMousePosition(event);
+      var mouse = this._getMousePosition(event)
       this.editFieldPosition.x = mouse.x
       this.editFieldPosition.y = mouse.y
     },
     _openNodeMenu (event) {
-      var mouse = this._getMousePosition(event);
-      var id = event.target.getAttribute('data-node-id');
+      var mouse = this._getMousePosition(event)
+      var id = event.target.getAttribute('data-node-id')
       this.nodeMenuPosition.x = mouse.x
       this.nodeMenuPosition.y = mouse.y
-      this.editTarget = this._findNodeById(id);
+      this.editTarget = this._findNodeById(id)
       this.editState = 'open-node-menu'
     },
     _removeAllRelativeEdgesOfNode (id) {
@@ -401,7 +401,7 @@ export default {
           case 'edit-edge-label':
             this.setEdge(this.editTarget.source, this.editTarget.target, {
               label: this.editFieldInput
-            });
+            })
             break
           case 'edit-node-label':
             this.setNode(this.editTarget.id, {
@@ -421,8 +421,8 @@ export default {
       }
     },
     _terminateInput () {
-        this.editState = 'none'
-        this.editTarget = undefined
+      this.editState = 'none'
+      this.editTarget = undefined
     },
     _checkEditFieldInput (state, input) {
       if (input === '' && state === 'edit-edge-label') {
@@ -431,7 +431,7 @@ export default {
         throw new Error('empty node label')
       }
     },
-    _setNodeType(type) {
+    _setNodeType (type) {
       this.setNode(this.editTarget.id, { type })
     },
 
@@ -446,14 +446,14 @@ export default {
       var options = {
         id: this.nodeCounter++,
         ...node
-      };
+      }
       this.nodes.push(new Node(options))
       this.$emit('add-node', new Node(options))
     },
     removeEdge (source, target) {
       var index = this._findEdgeIndexById(source, target)
       var edge = this.edges[index]
-      this.edges.splice(index, 1);
+      this.edges.splice(index, 1)
       this.$emit('remove-edge', new Edge(edge))
     },
     removeNode (id) {
@@ -476,10 +476,10 @@ export default {
       this.$emit('set-edge', edge)
     },
     getEdgeCount () {
-      return this.edges.length;
+      return this.edges.length
     },
     getNodeCount () {
-      return this.nodes.length;
+      return this.nodes.length
     }
   },
   computed: {

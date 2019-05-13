@@ -15,8 +15,8 @@ export default {
     nodeCount: state => state.AutomataStore.nodeCount,
     edgeCount: state => state.AutomataStore.edgeCount,
     sections () {
-      return  [
-        { id: 'automataType', title: 'Automata Type', content: this.automataType  },
+      return [
+        { id: 'automataType', title: 'Automata Type', content: this.automataType },
         { id: 'nodeCount', title: 'Node Count', content: this.nodeCount },
         { id: 'edgeCount', title: 'Edge Count', content: this.edgeCount }
       ]

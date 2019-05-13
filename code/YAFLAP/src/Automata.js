@@ -252,13 +252,13 @@ export class Automata {
 
   calculateType () {
     function initialNodeCount (automata) {
-      var count = 0;
+      var count = 0
       for (var record of automata._nodeRecords) {
         if (record.type === NODE_TYPE.initial || record.type === NODE_TYPE.initFinal) {
-          count++;
+          count++
         }
       }
-      return count;
+      return count
     }
     function hasFinalNode (automata) {
       return automata._nodeRecords.findIndex(nodeRecord =>

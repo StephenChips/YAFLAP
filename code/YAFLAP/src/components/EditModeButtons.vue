@@ -37,7 +37,7 @@ export default {
     })
   },
   destoryed () {
-    this.fab.destory();
+    this.fab.destory()
   },
   computed: {
     currentTitledButton () {
