@@ -2,7 +2,7 @@
   <div class="generator-board">
     <header class="header">
       <h4 class="title">Generator board</h4>
-      <button class="action-button" id="goto-automata-page" @click="$router.push('/')">Go to automata page</button>
+      <button class="action-button italic" id="goto-automata-page" @click="$router.push('/')"> &lt;&lt;&lt; Go to automata page</button>
     </header>
     <div class="content">
       <div class="action-area">
@@ -182,5 +182,8 @@ button {
   position: absolute;
   left: 15px;
   top: 5px;
+}
+.italic {
+  font-style: italic;
 }
 </style>

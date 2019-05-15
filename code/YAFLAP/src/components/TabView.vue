@@ -36,14 +36,14 @@ export default {
   align-items: center;
   flex-wrap: nowrap;
   height: 40px;
-  box-shadow: 1px 1px 1px black;
+  box-shadow: 3px 3px 0px black;
   border-radius: 3px;
   padding: 0;
 }
 .tab-item {
   box-sizing: border-box;
-  font-size: 18px;
-  background: #bbbbbb;
+  font-size: 17px;
+  background: rgb(206, 238, 226);
   border: 2px solid brown;
   height: 100%;
   flex-grow: 1;
@@ -51,13 +51,15 @@ export default {
   text-align: center;
   line-height: 30px;
   list-style-type: none;
+  font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+  letter-spacing: 1.1;
 }
 
 .tab-item > a {
-  color: whitesmoke;
+  color: black;
   text-decoration: none;
 }
 .tab-item-selected {
-  background: #777777;
+  background: whitesmoke;
 }
 </style>

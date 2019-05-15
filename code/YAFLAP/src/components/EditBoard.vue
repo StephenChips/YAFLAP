@@ -67,6 +67,13 @@
             :d='_linkArc(edge)'
             :marker-mid="`url(#edge-label-marker-${edge.id})`"
             marker-end="url(#edgeArrow)"/>
+            <!--  FIXME temporary solution -->
+          <text
+            v-if="edge.source === edge.target"
+            text-anchor="middle"
+            :transform="__temporary_getTransformOfSelfConnectedEdge(edge)"
+            >{{ edge.label }}
+          </text>
         </g>
       </g>
       <g>
@@ -207,10 +214,27 @@ export default {
     }
   },
   methods: {
+    __temporary_getTransformOfSelfConnectedEdge (edge) {
+      var node = this._findNodeById(edge.target)
+      return `translate(${node.x}, ${node.y - 85})`
+    },
     _linkArc (edge) {
       var source = this._findNodeById(edge.source)
       var target = this._findNodeById(edge.target)
-      return this._getArcPath(source.x, source.y, target.x, target.y)
+      if (source === target) {
+        return this._getRingPath(source.x, source.y)
+      } else {
+        return this._getArcPath(source.x, source.y, target.x, target.y)
+      }
+    },
+    _getRingPath (x, y) {
+      var len = 100;
+      var controlPoints = {
+        left: { x: x - len, y: y - len },
+        right: { x: x + len, y: y - len },
+      };
+
+      return `M ${x},${y} C ${controlPoints.left.x},${controlPoints.left.y} ${controlPoints.right.x},${controlPoints.right.y} ${x},${y}`
     },
     _getArcPath (sourceX, sourceY, targetX, targetY) {
       var dx = sourceX - targetX

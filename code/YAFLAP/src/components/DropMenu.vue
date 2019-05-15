@@ -23,11 +23,11 @@ export default {
 </script>
 <style scoped>
 .drop-menu-item {
-  width: 100%;
-  padding: 2px;
+  padding: 6px 8px;
   font-size: 14px;
   text-align: center;
   border-bottom: 1px black solid;
+  list-style-type: none;
 }
 
 .drop-menu-item:hover {
@@ -35,11 +35,11 @@ export default {
 }
 
 .drop-menu {
-  width: 150px;
   border: 1px #AE20BB solid;
   margin-bottom: 10px;
   background-color: #FFFFFF;
   border-radius: 3px;
   box-shadow: 3px 3px 0 black;
+  padding: 0;
 }
 </style>

@@ -40,20 +40,20 @@ export default {
   margin-right: 5px;
   padding: 0;
   box-sizing: border-box;
-  border: 2px solid brown;
+  border: 3px solid rgb(102, 38, 38);
   margin-bottom: 8px;
-  box-shadow: 1px 1px 1px black;
-  border-radius: 3px;
+  box-shadow: 3px 3px 0px black;
 }
 .section-header {
   margin: 0;
   line-height: 50px;
   padding: 5px 3px;
   box-sizing: border-box;
-  background: rgb(163, 33, 33);
-  color: rgb(223, 223, 223);
+  background: rgb(206, 238, 226);
+  color: black;
   font-size: 26px;
   font-weight: 600;
+  letter-spacing: 1.1;
   padding-left: 15px;
   font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
 }
