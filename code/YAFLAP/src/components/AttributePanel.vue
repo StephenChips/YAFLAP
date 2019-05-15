@@ -10,10 +10,16 @@
 import { mapState } from 'vuex'
 export default {
   name: 'attribute-panel',
-  computed: mapState({
-    automataType: state => state.AutomataStore.automataType,
-    nodeCount: state => state.AutomataStore.nodeCount,
-    edgeCount: state => state.AutomataStore.edgeCount,
+  data () {
+    return {
+    }
+  },
+  computed: {
+      ...mapState({
+      automataType: state => state.AutomataStore.automataType,
+      nodeCount: state => state.AutomataStore.nodeCount,
+      edgeCount: state => state.AutomataStore.edgeCount,
+    }),
     sections () {
       return [
         { id: 'automataType', title: 'Automata Type', content: this.automataType },
@@ -21,7 +27,8 @@ export default {
         { id: 'edgeCount', title: 'Edge Count', content: this.edgeCount }
       ]
     }
-  })
+  }
+
 }
 </script>
 <style scoped>
@@ -45,5 +52,14 @@ export default {
   box-sizing: border-box;
   background: rgb(163, 33, 33);
   color: rgb(223, 223, 223);
+  font-size: 26px;
+  font-weight: 600;
+  padding-left: 15px;
+  font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+}
+.section-content {
+  padding-left: 15px;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 600;
 }
 </style>

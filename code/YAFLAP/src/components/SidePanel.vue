@@ -1,7 +1,7 @@
 <template>
   <div class="side-panel">
     <div>
-      <h3>{{ title }}</h3>
+      <h3 class="title">{{ title }}</h3>
       <p>{{ websideDesc }}</p>
     </div>
     <tab-view :tabs="tabs" v-model="currentSidePanel"></tab-view>
@@ -37,5 +37,10 @@ export default {
 .panels {
   margin-top: 30px;
   width: 90%;
+}
+.title {
+  font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+  font-size: 40px;
+  margin: 10px 0;
 }
 </style>

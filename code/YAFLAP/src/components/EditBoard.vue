@@ -3,8 +3,7 @@
     <svg
       class="graph"
       @mousemove="_handleBoardMouseMoveEvent"
-      @mouseup="_handleBoardMouseUpEvent"
-    >
+      @mouseup="_handleBoardMouseUpEvent">
       <defs>
         <marker
           id="edgeArrow"
@@ -42,17 +41,32 @@
         </marker>
       </defs>
       <g data-free-edge="free-edge" v-show="isFreeEdgeVisible">
-        <path :d='_getArcPath(freeEdge.source.x, freeEdge.source.y, freeEdge.target.x, freeEdge.target.y)' class="edge-overlay"/>
-        <path :d='_getArcPath(freeEdge.source.x, freeEdge.source.y, freeEdge.target.x, freeEdge.target.y)' class="edge" marker-end="url(#freeEdgeArrow)"/>
+        <path
+          class="edge-overlay"
+          :d='_getArcPath(freeEdge.source.x, freeEdge.source.y, freeEdge.target.x, freeEdge.target.y)'/>
+        <path
+          class="edge"
+          marker-end="url(#freeEdgeArrow)"
+          :d='_getArcPath(freeEdge.source.x, freeEdge.source.y, freeEdge.target.x, freeEdge.target.y)'/>
       </g>
       <g>
         <g v-for='edge of edges' :key="edge.id"
           :data-edge-id="edge.id"
           :data-edge-source="edge.source" :data-edge-target="edge.target"
           @click="_handleEdgeClickEvent">
-          <path :d='_linkArc(edge)' :data-edge-source="edge.source" :data-edge-target="edge.target" class="edge-overlay"/>
-          <path v-bind="{ 'id' : `${name}-${edge.id}` }" :data-edge-source="edge.source" :data-edge-target="edge.target" :d='_linkArc(edge)' class="edge" marker-end="url(#edgeArrow)" :marker-mid="`url(#edge-label-marker-${edge.id})`"/>
-          b
+          <path
+            class="edge-overlay"
+            :d='_linkArc(edge)'
+            :data-edge-source="edge.source"
+            :data-edge-target="edge.target"/>
+          <path
+            class="edge"
+            v-bind="{ 'id' : `${name}-${edge.id}` }"
+            :data-edge-source="edge.source"
+            :data-edge-target="edge.target"
+            :d='_linkArc(edge)'
+            :marker-mid="`url(#edge-label-marker-${edge.id})`"
+            marker-end="url(#edgeArrow)"/>
         </g>
       </g>
       <g>

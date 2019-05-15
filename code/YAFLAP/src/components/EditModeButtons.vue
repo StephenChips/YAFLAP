@@ -1,16 +1,12 @@
 <template>
-  <div class="fixed-action-btn">
-    <a href="#" :class="['btn-floating', 'btn-large'].concat(this.currentTitledButton.colorClass)">
-      <i class="large material-icons">{{ this.currentTitledButton.icon }}</i>
-    </a>
-    <ul>
-      <li v-for="button of buttons" :key="button.mode">
-        <a :class="['btn-floating'].concat(button.colorClass)" @click="$emit('input', button.mode)">
-          <i class="material-icons">{{ button.icon }}</i>
-        </a>
-      </li>
-    </ul>
-  </div>
+  <ul class="edit-mode-buttons">
+    <li class="edit-mode-button-item" :class="{ 'edit-mode-button-item-selected': value === button.mode }"  v-for="button of buttons" :key="button.mode">
+      <a  @click="$emit('input', button.mode)">
+        {{ button.title }}
+      </a>
+    </li>
+    <li class="clearfix" style="list-style-type: none"></li>
+  </ul>
 </template>
 <script>
 export default {
@@ -24,9 +20,9 @@ export default {
   data () {
     return {
       buttons: [
-        { mode: 'create', icon: 'add', colorClass: ['amber'], },
-        { mode: 'delete', icon: 'cancel', colorClass: ['red'] },
-        { mode: 'edit', icon: 'edit', colorClass: ['blue', 'darken-1'] }
+        { mode: 'create', title: 'Add', colorClass: ['amber'], },
+        { mode: 'delete', title: 'cancel', colorClass: ['red'] },
+        { mode: 'edit', title: 'Edit', colorClass: ['blue', 'darken-1'] }
       ]
     }
   },
@@ -36,9 +32,6 @@ export default {
       hoverEnabled: true
     })
   },
-  destoryed () {
-    this.fab.destory()
-  },
   computed: {
     currentTitledButton () {
       var result = this.buttons.find(button => button.mode === this.value)
@@ -47,3 +40,29 @@ export default {
   }
 }
 </script>
+<style scoped>
+.edit-mode-buttons {
+  padding: 0px;
+  border-radius: 5px;
+  border: 2px solid brown;
+  background: #bbbbbb;
+  box-shadow: 2px 2px 0 black;
+}
+.edit-mode-button-item {
+  float: left;
+  border-right: 1px solid brown;
+  padding: 5px 10px;
+  list-style-type: none;
+  cursor: pointer;
+}
+.edit-mode-button-item > a {
+  color: white;
+}
+.edit-mode-button-item-selected {
+  background-color: #777777;
+}
+.clearfix {
+  clear: both;
+}
+</style>
+

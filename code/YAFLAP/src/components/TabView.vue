@@ -38,6 +38,7 @@ export default {
   height: 40px;
   box-shadow: 1px 1px 1px black;
   border-radius: 3px;
+  padding: 0;
 }
 .tab-item {
   box-sizing: border-box;
@@ -49,10 +50,12 @@ export default {
   flex-shrink: 1;
   text-align: center;
   line-height: 30px;
+  list-style-type: none;
 }
 
-.tab-item a {
+.tab-item > a {
   color: whitesmoke;
+  text-decoration: none;
 }
 .tab-item-selected {
   background: #777777;
