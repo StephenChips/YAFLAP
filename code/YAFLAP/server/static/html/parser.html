@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>principle of compiling</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<div id="nav">
+    <div id="eye">
+        <img id="browse" src="img/browse.png">
+        <ul id="nav-item">
+            <li><a href="#editorSection" title="Editor">E</a></li>
+            <li><a href="#debugSection" title="Debugger">D</a></li>
+            <li><a href="#tokenSection" title="Token List">TL</a></li>
+            <li><a href="#stSection" title="Symbol Table">ST</a></li>
+            <li><a href="#icSection" title="AST Traserval Result">AST Trav</a></li>
+            <li><a href="#x86Section" title="Assembly Language">AL</a></li>
+            <li><a href="#astSection" title="Abstract Syntax Tree">AST</a></li>
+            <li><a href="#dfaSection" title="Deterministic Finite Automaton">DFA</a></li>
+            <li><a href="#graTextSection" title="LL Grammar Editor">LL</a></li>
+            <li><a href="#ll-analyse-tableSection" title="Analytical table">AT</a></li>
+            <li><a href="#predict-sets-tableSection" title="Predict sets">PS</a></li>
+            <li><a href="#first-sets-tableSection" title="First sets or Follow sets">FS</a></li>
+        </ul>
+    </div>
+</div>
+<div class="page">
+    <header class="header">
+        <h1>Principle of Compiling</h1>
+        <p>A visualization tool for AST, DFA, token, symbol table, intermediate code, assembly language, first, follow
+            and predict sets</p>
+    </header>
+    <div class="section-group">
+        <section id="editorSection" class="section section-center">
+            <h2 class="section-header">Editor</h2>
+            <div id="editor">var i : int;</div>
+            <div style="display: flex">
+                <input class="section-button" type="button" id="btn" value="Run">
+                <input class="section-button" type="button" id="debugbtn" value="debug">
+            </div>
+        </section>
+        <section id="debugSection" class="section section-hidden section-center">
+            <h2 class="section-header">Debugger</h2>
+            <div id="debug"></div>
+            <input class="section-button" style="visibility: hidden" type="button" id="prebtn" value="pre">
+            <input class="section-button" style="visibility: hidden" type="button" id="nextbtn" value="next">
+        </section>
+    </div>
+    <div id="error" class="disappear"></div>
+    <div class="section-group section-hidden">
+        <section id="tokenSection" class="section section-center">
+            <h2 class="section-header">Token List</h2>
+            <div id="token"></div>
+        </section>
+        <section id="stSection" class="section section-center">
+            <h2 class="section-header">Symbol Table</h2>
+            <div id="st"></div>
+        </section>
+    </div>
+    <div class="section-group section-hidden">
+        <section id="icSection" class="section section-center">
+            <h2 class="section-header">AST Traserval Result</h2>
+            <div id="ic"></div>
+        </section>
+        <section id="x86Section" class="section section-center">
+            <h2 class="section-header">Assembly Language</h2>
+            <div id="x86"></div>
+        </section>
+    </div>
+    <div class="section-group section-hidden">
+        <section id="astSection" class="section section-center">
+            <h2 class="section-header">AST</h2>
+            <div id="ast">
+                <div id="tree"></div>
+            </div>
+        </section>
+        <section id="dfaSection" class="section section-center">
+            <h2 class="section-header">DFA</h2>
+            <div id="dfa"></div>
+        </section>
+    </div>
+    <div class="section-group section-hidden">
+        <section id="graTextSection" class="section section-center">
+            <h2 class="section-header">LL(1) grammar</h2>
+            <div id="graText"></div>
+            <input class="section-button" type="button" value="Go" id="grabtn">
+            <input class="section-button" type="button" value="Example" id="init">
+        </section>
+    </div>
+    <div class="section-group section-hidden">
+        <section id="ll-analyse-tableSection" class="section section-center">
+            <h2 class="section-header">Analytical table</h2>
+            <div class="tableDiv">
+                <table class="table" id="ll-analyse-table">
+                    <thead>
+                    <tr></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+        <section id="predict-sets-tableSection" class="section section-center">
+            <h2 class="section-header">Predict sets</h2>
+            <div class="tableDiv">
+                <table class="table" id="predict-sets-table">
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Sets</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+    <div class="section-group section-hidden">
+        <section id="first-sets-tableSection" class="section section-center">
+            <h2 class="section-header">First sets</h2>
+            <div class="tableDiv">
+                <table class="table" id="first-sets-table">
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Sets</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+        <section id="follow-sets-tableSection" class="section section-center">
+            <h2 class="section-header">Follow sets</h2>
+            <div class="tableDiv">
+                <table class="table" id="follow-sets-table">
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Sets</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+<script src="js/ast.js"></script>
+<script src="js/ohm.js"></script>
+<script src="node_modules/hashmap/hashmap.js"></script>
+<script src="js/main.js"></script>
+<script src="node_modules/jquery/dist/jquery.js"></script>
+<script src="node_modules/ace-builds/src/ace.js"></script>
+<script src="js/x86generator.js"></script>
+<script src="node_modules/first-follow/index.js"></script>
+<script type="text/ohm-js">
+Iki {
+  Program     =  Block
+  Block       =  (Stmt ";")+
+  Stmt        =  "var" id ":" Type               -- decl
+              |  VarExp "=" Exp                  -- assignment
+              |  "read" VarExp ("," VarExp)*     -- read
+              |  "write" Exp ("," Exp)*          -- write
+              |  "while" Exp "loop" Block "end"  -- while
+  Type        =  "int" | "bool"
+  Exp         =  Exp "or" Exp1                   -- binary
+              |  Exp1
+  Exp1        =  Exp1 "and" Exp2                 -- binary
+              |  Exp2
+  Exp2        =  Exp2 relop Exp3                 -- binary
+              |  Exp3
+  Exp3        =  Exp3 addop Exp4                 -- binary
+              |  Exp4
+  Exp4        =  Exp4 mulop Exp5                 -- binary
+              |  Exp5
+  Exp5        =  prefixop Exp6                   -- unary
+              |  Exp6
+  Exp6        =  boollit
+              |  intlit
+              |  VarExp
+              |  "(" Exp ")"                     -- parens
+  VarExp      = id
+
+  keyword     =  ("var" | "read" | "write" | "while" | "loop"
+              |  "end" | "int" | "bool" | "true" | "false") ~idrest
+  id          =  ~keyword letter idrest*
+  idrest      =  "_" | alnum
+  intlit      =  digit+
+  boollit     =  "true" | "false"
+  addop       =  "+" | "-"
+  relop       =  "<=" | "<" | "==" | "!=" | ">=" | ">"
+  mulop       =  "*" | "/" | "%"
+  prefixop    =  ~"--" "-" | "not"
+
+  space      +=  comment
+  comment     =  "--" (~"\n" any)* "\n"
+}
+</script>
+<script>
+    var g = ohm.grammarFromScriptElement();
+    var s = g.createSemantics();
+    s.addOperation('ast', {
+        Program: function (b) {
+            return new Program(b.ast());
+        },
+        Block: function (s, _) {
+            return new Block(s.ast());
+        },
+        Stmt_decl: function (v, id, _, type) {
+            return new VariableDeclaration(id.sourceString, type.ast());
+        },
+        Stmt_assignment: function (varexp, _, exp) {
+            return new AssignmentStatement(varexp.ast(), exp.ast());
+        },
+        Stmt_read: function (r, varexp, c, more) {
+            return new ReadStatement([varexp.ast()].concat(more.ast()));
+        },
+        Stmt_write: function (w, e, c, more) {
+            return new WriteStatement([e.ast()].concat(more.ast()));
+        },
+        Stmt_while: function (w, e, d, b, _) {
+            return new WhileStatement(e.ast(), b.ast());
+        },
+        Type: function (typeName) {
+            return Type.forName(typeName.sourceString);
+        },
+        Exp_binary: function (e1, _, e2) {
+            return new BinaryExpression("or", e1.ast(), e2.ast());
+        },
+        Exp1_binary: function (e1, _, e2) {
+            return new BinaryExpression("and", e1.ast(), e2.ast());
+        },
+        Exp2_binary: function (e1, op, e2) {
+            return new BinaryExpression(op.sourceString, e1.ast(), e2.ast());
+        },
+        Exp3_binary: function (e1, op, e2) {
+            return new BinaryExpression(op.sourceString, e1.ast(), e2.ast());
+        },
+        Exp4_binary: function (e1, op, e2) {
+            return new BinaryExpression(op.sourceString, e1.ast(), e2.ast());
+        },
+        Exp5_unary: function (op, e) {
+            return new UnaryExpression(op.sourceString, e.ast());
+        },
+        Exp6_parens: function (l, e, r) {
+            return e.ast();
+        },
+        boollit: function (b) {
+            return new BooleanLiteral(this.sourceString);
+        },
+        intlit: function (n) {
+            return new IntegerLiteral(this.sourceString);
+        },
+        VarExp: function (i) {
+            return new VariableExpression(this.sourceString);
+        }
+    });
+    var elt = makeElement;
+    s.addOperation('toTree', {
+        Program: function (b) {
+            return elt('Program', b.toTree());
+        },
+        Block: function (s, _) {
+            return elt('Block', s.toTree());
+        },
+        Stmt_decl: function (v, id, _, type) {
+            return elt('VariableDeclaration', v.toTree(), id.toTree(), type.toTree());
+
+        },
+        Stmt_assignment: function (varexp, _, exp) {
+            return elt('AssignmentStatement', varexp.toTree(), _.toTree(), exp.toTree());
+        },
+        Stmt_read: function (r, varexp, c, more) {
+            return elt('ReadStatement', r.toTree(), varexp.toTree(), more.toTree());
+        },
+        Stmt_write: function (w, e, c, more) {
+            return elt('WriteStatement', w.toTree(), e.toTree(), more.toTree());
+        },
+        Stmt_while: function (w, e, d, b, _) {
+            return elt('WhileStatement', w.toTree(), e.toTree(), 'loop', b.toTree(), 'end');
+        },
+        Type: function (typeName) {
+            return elt('Type', typeName.toTree());
+        },
+        Exp_binary: function (e1, _, e2) {
+            return elt('BinaryExpression', 'or', e1.toTree(), e2.toTree());
+        },
+        Exp: function (e) {
+            return elt('BinaryExpression', e.toTree());
+        },
+        Exp1_binary: function (e1, _, e2) {
+            return elt('BinaryExpression', 'and', e1.toTree(), e2.toTree());
+        },
+        Exp1: function (e) {
+            return elt('BinaryExpression', e.toTree());
+        },
+        Exp2_binary: function (e1, op, e2) {
+            return elt('BinaryExpression', op.toTree(), e1.toTree(), e2.toTree());
+        },
+        Exp2: function (e) {
+            return elt('BinaryExpression', e.toTree());
+        },
+        Exp3_binary: function (e1, op, e2) {
+            return elt('BinaryExpression', op.toTree(), e1.toTree(), e2.toTree());
+        },
+        Exp3: function (e) {
+            return elt('BinaryExpression', e.toTree());
+        },
+        Exp4_binary: function (e1, op, e2) {
+            return elt('BinaryExpression', op.toTree(), e1.toTree(), e2.toTree());
+        },
+        Exp4: function (e) {
+            return elt('BinaryExpression', e.toTree());
+        },
+        Exp5_unary: function (op, e) {
+            return elt('UnaryExpression', op.toTree(), e.toTree());
+        },
+        Exp5: function (e) {
+            return elt('Expression', e.toTree());
+        },
+        Exp6_parens: function (l, e, r) {
+            return elt('Parens', l.toTree(), e.toTree(), r.toTree());
+        },
+        Exp6: function (e) {
+            return elt('Expression', e.toTree());
+        },
+        boollit: function (b) {
+            return elt('BooleanLiteral', this.sourceString);
+        },
+        intlit: function (n) {
+            return elt('IntegerLiteral', this.sourceString);
+        },
+        id: function (k, l) {
+            return elt('ID', this.sourceString);
+        },
+        VarExp: function (i) {
+            return elt('VariableExpression', i.toTree());
+        },
+        _terminal: function () {
+            return this.primitiveValue;
+        }
+    });
+    s.addAttribute('token', {
+        Program: function (b) {
+            // return new Program(b.ast());
+            return [b.token];
+        },
+        Block: function (s, _) {
+            // return new Block(s.ast());
+            var tmp = s.token, res = [];
+            if (Array.isArray(tmp)) {
+                for (var i = 0; i < tmp.length; i++) {
+                    res = res.concat(tmp[i].concat(['SEMICOLON']));
+                }
+            }
+            // return [s.token, 'SEMICOLON'];
+            return [res];
+        },
+        Stmt_decl: function (v, id, _, type) {
+            // return new VariableDeclaration(id.sourceString, type.ast());
+            return ['VAR', 'ID(' + id.token + ')', 'COLON', 'TYPE(' + type.token + ')'];
+        },
+        Stmt_assignment: function (varexp, _, exp) {
+            // return new AssignmentStatement(varexp.ast(), exp.ast());
+            return [varexp.token, 'EQUAL', exp.token];
+        },
+        Stmt_read: function (r, varexp, c, more) {
+            // return new ReadStatement([varexp.ast()].concat(more.ast()));
+            var tmp = more.token, arr = [];
+            if (Array.isArray(tmp)) {
+                for (var i = 0; i < tmp.length; i++) {
+                    arr = arr.concat(['COMMA'].concat(tmp[i]));
+                }
+            }
+            return ['READ', varexp.token].concat(arr);
+        },
+        Stmt_write: function (w, e, c, more) {
+            // return new WriteStatement([e.ast()].concat(more.ast()));
+            var tmp = more.token, arr = [];
+            if (Array.isArray(tmp)) {
+                for (var i = 0; i < tmp.length; i++) {
+                    arr = arr.concat(['COMMA'].concat(tmp[i]));
+                }
+            }
+            return ['WRITE', e.token].concat(arr);
+        },
+        Stmt_while: function (w, e, d, b, _) {
+            // return new WhileStatement(e.ast(), b.ast());
+            return ['WHILE', e.token, 'LOOP', b.token, 'END'];
+        },
+        Type: function (typeName) {
+            // return Type.forName(typeName.sourceString);
+            var str = typeName.sourceString;
+            if (str === 'int')
+                str = 'INT';
+            else if (str === 'bool')
+                str = 'BOOL';
+            return str;
+        },
+        Exp_binary: function (e1, _, e2) {
+            // return new BinaryExpression("or", e1.ast(), e2.ast());
+            return [e1.token, 'OR', e2.token];
+        },
+        Exp1_binary: function (e1, _, e2) {
+            // return new BinaryExpression("and", e1.ast(), e2.ast());
+            return [e1.token, 'AND', e2.token];
+        },
+        Exp2_binary: function (e1, op, e2) {
+            // return new BinaryExpression(op.sourceString, e1.ast(), e2.ast());
+            var str = op.sourceString;
+            if (str === '<=')
+                str = 'LE';
+            else if (str === '<')
+                str = 'L';
+            else if (str === '==')
+                str = 'E';
+            else if (str === '!=')
+                str = 'NE';
+            else if (str === '>=')
+                str = 'GE';
+            else if (str === '>')
+                str = 'G';
+            return [e1.token, str, e2.token];
+        },
+        Exp3_binary: function (e1, op, e2) {
+            // return new BinaryExpression(op.sourceString, e1.ast(), e2.ast());
+            var str = op.sourceString;
+            if (str === '+')
+                str = 'ADD';
+            else if (str === '-')
+                str = 'SUB';
+            return [e1.token, str, e2.token];
+        },
+        Exp4_binary: function (e1, op, e2) {
+            // return new BinaryExpression(op.sourceString, e1.ast(), e2.ast());
+            var str = op.sourceString;
+            if (str === '*')
+                str = 'MUL';
+            else if (str === '/')
+                str = 'DIV';
+            else if (str === '%')
+                str = 'MOD';
+            return [e1.token, str, e2.token];
+        },
+        Exp5_unary: function (op, e) {
+            // return new UnaryExpression(op.sourceString, e.ast());
+            var str = op.sourceString;
+            if (str === '-')
+                str = 'MINUS';
+            else if (str === 'not')
+                str = 'NOT';
+            return [str, e.token];
+        },
+        Exp6_parens: function (l, e, r) {
+            // return e.ast();
+            return ['LP', e.token, 'RP'];
+        },
+        boollit: function (b) {
+            // return new BooleanLiteral(this.sourceString);
+            return ['BOOL(' + this.sourceString + ')'];
+        },
+        intlit: function (n) {
+            // return new IntegerLiteral(this.sourceString);
+            return ['NUM(' + this.sourceString + ')'];
+        },
+        VarExp: function (i) {
+            // return new VariableExpression(this.sourceString);
+            return ['ID(' + this.sourceString + ')'];
+        },
+        id: function (k, l) {
+            return [this.sourceString];
+        },
+        _nonterminal: function (children) {
+            if (children.length === 1) {
+                // If this node has only one child, just return the Lisp-like tree of its child. This lets us
+                // avoid writing semantic actions for the `Exp`, `AddExp`, `MulExp`, `ExpExp`, and `PriExp`
+                // rules.
+                return children[0].token;
+            } else {
+                // If this node doesn't have exactly one child, we probably should have handled it specially.
+                // So we'll throw an exception to let us know that we're missing a semantic action for this
+                // type of node.
+                throw new Error("Uh-oh, missing semantic action for " + this.constructor);
+            }
+        }
+    });
+</script>
+<script>
+    $('#eye').on('mouseover', function () {
+        $('#nav-item').stop().slideDown();
+    });
+    $('#eye').on('mouseout', function () {
+        $('#nav-item').stop().slideUp();
+    });
+    var lleditor = ace.edit("graText");
+    lleditor.setTheme("ace/theme/twilight");
+    var InitGraText = 'Program -> Block\n' +
+        'Block -> Stmt ; Block\n' +
+        '| ε\n' +
+        'Stmt -> var id : Type\n' +
+        '| VarExp = Exp\n' +
+        '| read VarExp ReExp\n' +
+        '| write Exp ReExp\n' +
+        '| while Exp loop Block end\n' +
+        'ReExp -> , VarExp ReExp\n' +
+        '| ε\n' +
+        'Type -> int\n' +
+        '| bool\n' +
+        'Exp -> Exp or Exp1\n' +
+        '| Exp1\n' +
+        'Exp1 -> Exp1 and Exp2\n' +
+        '| Exp2\n' +
+        'Exp2 -> Exp2 reop Exp3\n' +
+        '| Exp3\n' +
+        'Exp3 -> Exp3 addop Exp4\n' +
+        '| Exp4\n' +
+        'Exp4 -> Exp4 mulop Exp5\n' +
+        '| Exp5\n' +
+        'Exp5 -> prefixop Exp6\n' +
+        '| Exp6\n' +
+        'Exp6 -> boollit\n' +
+        '| intlit\n' +
+        '| VarExp\n' +
+        '| ( Exp )\n' +
+        'VarExp -> id\n';
+
+    $(function () {
+        lleditor.setValue(InitGraText);
+        showSets(InitGraText);
+        window.onscroll = function () {
+            var top = document.documentElement.scrollTop;
+            $("#nav").css("top", top + 40);
+        }
+    });
+
+    $('#grabtn').on('click', function () {
+        var s = lleditor.getValue();
+        showSets(s);
+    });
+
+    $('#init').on('click', function () {
+        lleditor.setValue(InitGraText);
+        showSets(InitGraText);
+    })
+
+    var showSets = function (s) {
+        var Init = grammarTextToGrammarStructure(s);
+        var InitGra = Init.grammar;
+        var InitGrammar = new Grammar(InitGra);
+        var ps = InitGrammar.getPredictSets();
+        showLLSets('first-sets-table', InitGrammar.getFirstSetHash());
+        showLLSets('follow-sets-table', InitGrammar.getFollowSetHash());
+        showLLSets('predict-sets-table', ps);
+        console.log(Init.left, InitGrammar.getPredictSets())
+        showLLAnalyticalTable('ll-analyse-table', Init.left, ps);
+    }
+
+    var grammarText2GrammarStructure = function (s) {
+        var arr = grammarTextFormat(s);
+        return ToGrammarStructure(arr);
+    }
+
+    var grammarTextFormat = function (s) {
+        var start = '', resArr = [];
+        var arr = s.split('\n');
+        for (var i = 0; i < arr.length; i++) {
+            if (arr[i] === '')
+                continue;
+            var t = arr[i].trim();
+            var res = isAss(t);
+            if (res !== -1) {
+                start = t.slice(0, res).trim();
+                resArr.push(resetBlank(t));
+            } else {
+                if (t[0] === '|') {
+                    t = t.slice(1, t.length).trim();
+                    t = start + ' -> ' + t;
+                    resArr.push(resetBlank(t));
+                }
+            }
+        }
+        return resArr;
+    }
+
+    var ToGrammarStructure = function (arr) {
+        var gra = [];
+        for (var i = 0; i < arr.length; i++) {
+            var res = isAss(arr[i]);
+            var l = arr[i].slice(0, res).trim();
+            var r = arr[i].slice(res + 2, arr[i].length).trim();
+            if (l === '' || r === '') {
+                alert('grammar wrong');
+            } else {
+                var rarr = r.split(' ');
+                rarr = replaceEpsilon(rarr);
+                gra.push({left: l, right: rarr});
+            }
+        }
+        return gra;
+    }
+
+    var grammarTextToGrammarStructure = function (s) {
+        var gra = [], left = ['jgallon'];
+        var arr = s.split('\n');
+        var start = '';
+        for (var i = 0; i < arr.length; i++) {
+            if (arr[i] === '')
+                continue;
+            var t = arr[i].trim();
+            var res = isAss(t);
+            if (res !== -1) {
+                var l = t.slice(0, res).trim();
+                var r = t.slice(res + 2, t.length).trim();
+                if (l === '' || r === '') {
+                    alert('grammar wrong');
+                } else {
+                    start = l;
+                    r = resetBlank(r);
+                    var rarr = r.split(' ');
+                    rarr = replaceEpsilon(rarr);
+                    gra.push({left: start, right: rarr});
+                    left.push(start);
+                }
+            } else {
+                if (t[0] === '|') {
+                    t = t.slice(1, t.length).trim();
+                    if (start === '') {
+                        alert('grammar wrong');
+                    } else {
+                        resetBlank(t);
+                        var rarr = t.split(' ');
+                        rarr = replaceEpsilon(rarr);
+                        gra.push({left: start, right: rarr});
+                        left.push(start);
+                    }
+                }
+            }
+        }
+        return {grammar: gra, left: left};
+    }
+
+    var replaceEpsilon = function (arr) {
+        var res = [];
+        for (var i = 0; i < arr.length; i++) {
+            if (arr[i] === 'ε') {
+                res.push(null);
+            }
+            else {
+                res.push(arr[i]);
+            }
+        }
+        return res;
+    }
+
+    var isAss = function (s) {
+        for (var i = 0; i < s.length - 1; i++) {
+            if (s[i] === '-' && s[i + 1] === '>') {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    var resetBlank = function (s) {
+        var re = /\s+/g;
+        return s.replace(re, ' ');
+    }
+
+    var showLLSets = function (id, data) {
+        var tb = $('#' + id + ' tbody');
+        tb.html(''); //clear
+        for (var key in data) {
+            var s, arr = data[key];
+            if (arr[0] === "\0") {
+                s = 'EOF';
+            } else if (arr[0] === null) {
+                s = 'ε';
+            } else {
+                s = arr[0];
+            }
+            for (var i = 1; i < arr.length; i++) {
+                if (arr[i] === "\0") {
+                    s = s + ', EOF';
+                } else if (arr[i] === null) {
+                    s = s + ', ε';
+                } else {
+                    s = s + (', ' + arr[i]);
+                }
+            }
+            tb.append('<tr><td>' + key + '</td><td>' + s + '</td></tr>');
+        }
+    }
+
+    var showLLAnalyticalTable = function (id, l, ps) {
+        {
+            var map = new Map(), setX = new Set(), setY = new Set();
+            for (var key in ps) {
+                var arr = ps[key];
+                setY.add(l[key]);
+                for (var i = 0; i < arr.length; i++) {
+                    if (map.has(l[key])) {
+                        var tmp = map.get(l[key]);
+                        if (tmp.has(arr[i])) {
+                            var tt = tmp.get(arr[i]);
+                            tt.push(key);
+                            tmp.set(arr[i], tt);
+                        } else {
+                            var tt = [];
+                            tt.push(key);
+                            tmp.set(arr[i], tt);
+                        }
+                    } else {
+                        var tmp = new Map();
+                        if (tmp.has(arr[i])) {
+                            var tt = tmp.get(arr[i]);
+                            tt.push(key);
+                            tmp.set(arr[i], tt);
+                        } else {
+                            var tt = [];
+                            tt.push(key);
+                            tmp.set(arr[i], tt);
+                        }
+                        map.set(l[key], tmp);
+                    }
+                    setX.add(arr[i]);
+                }
+            }
+        }
+        var thtr = $('#' + id + ' thead tr');
+        var tb = $('#' + id + ' tbody');
+        thtr.html('');
+        tb.html('');
+        thtr.append('<th>#</th>');
+        setX.forEach(function (keyX) {
+            thtr.append('<th>' + keyX + '</th>');
+        });
+        setY.forEach(function (keyY) {
+            var s = '<td>' + keyY + '</td>';
+            setX.forEach(function (keyX) {
+                var tmp = map.get(keyY);
+                if (tmp.has(keyX)) {
+                    var tt = tmp.get(keyX);
+                    if (tt.length > 1) {
+                        var str = tt[0];
+                        for (var i = 1; i < tt.length; i++) {
+                            str += (', ' + tt[i]);
+                        }
+                        s += ('<td class="warn">' + str + '</td>');
+                    } else {
+                        s += ('<td>' + tt[0] + '</td>')
+                    }
+                } else {
+                    s += ('<td> </td>')
+                }
+            });
+            tb.append('<tr>' + s + '</tr>');
+        });
+    }
+</script>
+<script>
+    var toRe = function (s) {
+        if (s === 'VAR' || s === 'WHILE' || s === 'LOOP' || s === 'END' || s === 'NOT' || s === 'AND' || s === 'OR' || s === 'WRITE' || s === 'READ' || (s[0] === 'B' && s[1] === 'O' && s[2] === 'O' && s[3] === 'L') || (s[0] === 'T' && s[1] === 'Y' && s[2] === 'P' && s[3] === 'E')) {
+            s = 'var|read|write|while|loop|end|int|bool|true|false|not|and|or';
+        } else if (s[0] === 'I' && s[1] === 'D') {
+            // s = '(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|_|0|1|2|3|4|5|6|7|8|9)*';
+            // s = '(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z)(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|_|0|1|2|3|4|5|6|7|8|9)*';
+            s = '(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z)(_|0|1|2|3|4|5|6|7|8|9)*';
+
+        } else if (s[0] === 'N' && s[1] === 'U' && s[2] === 'M') {
+            s = '(1|2|3|4|5|6|7|8|9)(0|1|2|3|4|5|6|7|8|9)*';
+        }
+        // else if (s[0] === 'B' && s[1] === 'O' && s[2] === 'O' && s[3] === 'L') {
+        //     s = 'true|false';
+        // }
+        else if (s === 'MINUS' || s === 'MOD' || s === 'DIV' || s === 'MUL' || s === 'SUB' || s === 'ADD' || s === 'L' || s === 'LE' || s === 'E' || s === 'NE' || s === 'G' || s === 'GE' || s === 'EQUAL' || s === 'COMMA' || s === 'COLON' || s === 'SEMICOLON') {
+            s = 'EOF+|/|%|>|>=|<|<=|==|!=|=|,|;|:';//don't have *
+        }
+        // else if (s[0] === 'T' && s[1] === 'Y' && s[2] === 'P' && s[3] === 'E') {
+        //
+        // }
+        return s;
+    }
+
+    function createWorker() {
+        var worker = new Worker('./js/worker.js');
+        worker.onerror = function (e) {
+            console.log(e);
+        }
+        worker.onmessage = function (e) {
+            workerBusy = false;
+            if (e.data.status) {
+                document.getElementById('dfa').innerHTML = e.data.dot[2];
+            } else {
+                alert("failed to render diagram");
+            }
+        }
+        return worker;
+    }
+
+    var workerBusy = true;
+    var currentWorker = undefined;
+
+    function tokenToString(x) {
+        return Array.isArray(x) ? x.map(tokenToString).join(' ')
+            : x.toString();
+    }
+
+    function buildTokenList (id, s) {
+        var f = document.getElementById(id);
+        this.removeChildren(f);
+        var arr = s.split(' ');
+        for (var i = 0; i < arr.length; i++) {
+            var t = document.createElement('div');
+            var txt = document.createTextNode(arr[i]);
+            t.appendChild(txt);
+            t.classList.add('tokenListItem');
+            f.appendChild(t);
+        }
+    }
+
+    var showAssemblyLanguage = function (s) {
+        var re = /\t+/g, div = $('#x86');
+        var arr = s.split('\n');
+        div.html('');
+        for (var i = 0; i < arr.length; i++) {
+            var tmp = arr[i].replace(re, '&nbsp;&nbsp;&nbsp;&nbsp;');
+            div.append('<p>' + tmp + '</p>');
+        }
+    }
+
+    var showIntermediateCode = function (arr) {
+        arr.sort(function (a, b) {
+            return a.tag - b.tag;
+        });
+        var div = $('#ic').html('');
+        // console.log(arr);
+        for (var i = 0; i < arr.length; i++) {
+            var tdiv = $('<div class="icDiv"></div>').text(arr[i].tag + ' ' + arr[i].constructorName);
+            var tul = $('<ul class="icUl"></ul>');
+            for (var key in arr[i].props) {
+                var tli = $('<li class="icLi"></li>').text(key + ' : ' + arr[i].props[key]);
+                tul.append(tli);
+            }
+            tdiv.append(tul);
+            div.append(tdiv);
+        }
+
+        $('#ic div').on('click', function () {
+            if ($(this).hasClass('active')) {
+                $(this).find('ul').slideUp();
+                $(this).removeClass('active');
+            } else {
+                $(this).find('ul').slideDown();
+                $(this).addClass('active');
+            }
+        })
+    }
+
+    var showSymbolTable = function (p, div) {
+        div.html('');
+        buildSymbolTable(p, div);
+    }
+
+    var buildSymbolTable = function (p, div) {
+        var map = p.symbolTable;
+        if (Object.keys(map).length === 0) {
+            var tag = $('<div class="symbolTag"></div>').text('null');
+            div.append(tag);
+        } else {
+            for (var key in map) {
+                var tag = $('<div class="symbolTag"></div>').text(key + " : " + map[key]);
+                div.append(tag);
+            }
+        }
+        if (p.sons.length === 0) {
+            return;
+        } else {
+            for (var i = 0; i < p.sons.length; i++) {
+                var tmp = $('<div class="symbolDiv"></div>');
+                div.append(tmp);
+                buildSymbolTable(p.sons[i], tmp);
+            }
+        }
+    }
+
+    var showError = function (s) {
+        var div = $('#error');
+        div.removeClass('disappear');
+        var arr = s.split('\n');
+        var re = /\s/g;
+        for (var i = 0; i < arr.length; i++) {
+            var tmp = arr[i].replace(re, '&nbsp;');
+            div.append($('<p>' + tmp + '</p>'));
+        }
+    }
+
+    var formatCode = function (s) {
+        {
+            var arr = s.split('\n');
+            var line = '';
+            for (var i = 0; i < arr.length; i++) {
+                var tmp = arr[i].trim();
+                tmp = tmp.replace(/\s+/g, ' ');
+                line += (' ' + tmp);
+            }
+            line = line.replace(/;+/g, ';');
+            arr = line.split(';');
+            var middle = [];
+            for (var i = 0; i < arr.length; i++) {
+                if (arr[i] === '')
+                    continue;
+                if (arr[i].indexOf('loop') > -1) {
+                    var tmp = arr[i].split('loop');
+                    for (var j = 0; j < tmp.length - 1; j++) {
+                        tmp[j] = tmp[j].trim();
+                        middle.push(tmp[j] + ' loop');
+                    }
+                    if (i < arr.length - 1)
+                        middle.push(tmp[tmp.length - 1].trim() + ';');
+                    else {
+                        middle.push(tmp[tmp.length - 1].trim());
+                    }
+                } else {
+                    if (i < arr.length - 1) {
+                        middle.push(arr[i].trim() + ';');
+                    } else {
+                        middle.push(arr[i].trim());
+                    }
+                }
+            }
+        }
+        var whileCnt = 0, endCnt = 0, ts = '';
+        var uiArr = [], orArr = [], markArr = [], helpArr = [];
+        //markArr 1: while  -1: end  0: other
+        for (var i = 0; i < middle.length; i++) {
+            if (middle[i] === '')
+                continue;
+            ts += middle[i];
+            orArr.push(middle[i]);
+            helpArr.push(ts);
+            if (middle[i].indexOf('while') > -1) {
+                var sp = '';
+                for (var c = 0; c < whileCnt; c++) {
+                    sp += '&nbsp;&nbsp;&nbsp;&nbsp;';
+                }
+                uiArr.push(sp + middle[i]);
+                markArr.push(1);
+                whileCnt++;
+            } else if (middle[i].indexOf('end') <= -1) {
+                var sp = '';
+                for (var c = 0; c < whileCnt - endCnt; c++) {
+                    sp += '&nbsp;&nbsp;&nbsp;&nbsp;';
+                }
+                uiArr.push(sp + middle[i]);
+                markArr.push(0);
+            } else {
+                endCnt++;
+                var sp = '';
+                for (var c = 0; c < whileCnt - endCnt; c++) {
+                    sp += '&nbsp;&nbsp;&nbsp;&nbsp;';
+                }
+                uiArr.push(sp + middle[i]);
+                markArr.push(-1);
+            }
+        }
+        var markHelper = [], sum = 0;
+        for (var i = 0; i < markArr.length; i++) {
+            sum += markArr[i];
+            markHelper.push(sum);
+        }
+        return {ui: uiArr, or: orArr, markArr: markArr, markHelper: markHelper, orHelper: helpArr};
+    }
+
+    var showDebugP = function (arr) {
+        var debugDiv = $('#debug');
+        debugDiv.html('');
+        for (var i = 0; i < arr.length; i++) {
+            debugDiv.append($('<p>' + arr[i] + '</p>'));
+        }
+        $('#debug p').eq(0).addClass('debugActive');
+    }
+
+    var debugPTransition = function (s, t, tmp) {t
+        if (s === t)
+            return;
+        tmp = s;
+        if (s < t) {
+            s++;
+            $('#debug p').eq(tmp).removeClass('debugActive');
+            $('#debug p').eq(s).addClass('debugActive');
+            tmp = s;
+            setTimeout(function () {
+                debugPTransition(s, t, tmp);
+            }, 400);
+        } else {
+            s--;
+            $('#debug p').eq(tmp).removeClass('debugActive');
+            $('#debug p').eq(s).addClass('debugActive');
+            tmp = s;
+            setTimeout(function () {
+                debugPTransition(s, t, tmp);
+            }, 400);
+        }
+    }
+
+    var showPreBtn = function () {
+        $('#prebtn').css('visibility', 'visible');
+    }
+
+    var showNextBtn = function () {
+        $('#nextbtn').css('visibility', 'visible');
+    }
+
+    var hiddenPreBtn = function () {
+        $('#prebtn').css('visibility', 'hidden');
+    }
+
+    var hiddenNextBtn = function () {
+        $('#nextbtn').css('visibility', 'hidden');
+    }
+
+    var editor = ace.edit("editor");
+    editor.setTheme("ace/theme/twilight");
+
+    var showRes = function (str) {
+        // $('#res').text(g.match(editor.getValue()));
+        $('#error').html('');
+        // var str = editor.getValue();
+        var mat = g.match(str);
+        if (mat.succeeded()) {
+            var p = s(mat).ast();
+            $('#tree').width(44444);
+            treeShow('tree', s(mat).toTree());
+            var w = $('#tree program').width();
+            $('#tree').width(w + 14);
+            buildTokenList('token', tokenToString(s(mat).token));
+            $('#token div').on('click', function () {
+                var str = $(this).text().replace(/\s/g, '');
+                str = toRe(str);
+                if (str) {
+                    if (workerBusy) {
+                        currentWorker && currentWorker.terminate();
+                        currentWorker = createWorker();
+                    }
+                    currentWorker.postMessage(str);
+                    // document.getElementById('result').className = 'result rendering';
+                }
+            });
+            p.analyze();
+            if (getSemanticErrorsCount() > 0) {
+                $('#st').html('');
+                $('#ic').html('');
+                $('#x86').html('');
+                // semantic errors
+                showError(getSemanticErrors());
+                return 0;
+            } else {
+                showSymbolTable(getAnalysisContextAncestor().sons[0], $('#st'));
+                showIntermediateCode(getIntermediateCode(p));
+                showAssemblyLanguage(getAssemblyLanguage(p));
+                return 1;
+            }
+        } else {
+            $('#tree').html('');
+            $('#token').html('');
+            $('#dfa').html('');
+            $('#st').html('');
+            $('#ic').html('');
+            $('#x86').html('');
+            // syntax errors
+            showError("Syntax Errors: " + mat.message);
+            return 0;
+        }
+    }
+
+    $('#btn').on('click', function () {
+        $('#error').addClass('disappear');
+        $('.section-group').removeClass('section-hidden');
+        showRes(editor.getValue());
+    });
+
+    var debugPosition = 0;
+    var codeLength = 0;
+    var markArr, markHelper, orHelper;
+
+    $('#debugbtn').on('click', function () {
+        $('#error').addClass('disappear');
+        $('#debugSection').removeClass('section-hidden');
+        $('.section-group').removeClass('section-hidden');
+        $('#error').html('');
+        debugPosition = 0;
+        var str = editor.getValue();
+        if (str === '') {
+            showError('not found any codes');
+            return;
+        }
+        var tmp = formatCode(str);
+        markArr = tmp.markArr;
+        markHelper = tmp.markHelper;
+        orHelper = tmp.orHelper;
+        codeLength = tmp.or.length;
+        showDebugP(tmp.ui);
+        if (markArr.length === 1) {
+            showRes(orHelper[0]);
+        } else {
+            var t = 0;
+            while (markArr[t] === 1 && t < codeLength) {
+                t++;
+            }
+            if (t === codeLength) {
+                t = codeLength - 1;
+            }
+            var res;
+            setTimeout(function () {
+                debugPTransition(0, t, 0);
+            }, 400);
+            debugPosition = t;
+            if (t !== codeLength - 1) {
+                var s = '';
+                for (var i = 0; i < markHelper[t]; i++)
+                    s += 'end;';
+                res = showRes(orHelper[t] + s);
+            }
+            else
+                res = showRes(orHelper[t]);
+            if (res === 1 && t !== codeLength - 1) {
+                showNextBtn();
+            } else {
+
+            }
+        }
+    });
+
+    $('#prebtn').on('click', function () {
+        $('#error').addClass('disappear');
+        $('#error').html('');
+        $('#debug p').eq(debugPosition).removeClass('debugActive');
+        debugPosition--;
+        $('#debug p').eq(debugPosition).addClass('debugActive');
+        var tmp = debugPosition;
+        while (markArr[tmp] === 1 && tmp >= 0) {
+            tmp--;
+        }
+        if (tmp < 0)
+            tmp = 0;
+        var tt = debugPosition;
+        setTimeout(function () {
+            debugPTransition(tt, tmp, tt);
+        }, 400);
+        debugPosition = tmp;
+        if (debugPosition === 0)
+            hiddenPreBtn();
+        if (debugPosition < codeLength - 1)
+            showNextBtn();
+        var s = orHelper[tmp];
+        if (debugPosition !== codeLength - 1)
+            for (var i = 0; i < markHelper[tmp]; i++) {
+                s += 'end;';
+            }
+        var res = showRes(s);
+        if (res === 1) {
+
+        } else {
+            // hiddenNextBtn();
+        }
+    });
+
+    $('#nextbtn').on('click', function () {
+        $('#debug p').eq(debugPosition).removeClass('debugActive');
+        debugPosition++;
+        $('#debug p').eq(debugPosition).addClass('debugActive');
+        var tmp = debugPosition;
+        while (markArr[tmp] === 1 && tmp < codeLength) {
+            tmp++;
+        }
+        if (tmp === codeLength)
+            tmp = codeLength - 1;
+        var tt = debugPosition;
+        setTimeout(function () {
+            debugPTransition(tt, tmp, tt);
+        }, 400);
+        debugPosition = tmp;
+        if (debugPosition === codeLength - 1)
+            hiddenNextBtn();
+        if (debugPosition > 0)
+            showPreBtn();
+        var s = orHelper[tmp];
+        if (debugPosition !== codeLength - 1)
+            for (var i = 0; i < markHelper[tmp]; i++) {
+                s += 'end;';
+            }
+        var res = showRes(s);
+        if (res === 1) {
+
+        } else {
+            hiddenNextBtn();
+        }
+    });
+
+</script>
+</body>
+</html>

@@ -26,12 +26,6 @@ export default {
       ]
     }
   },
-  mounted () {
-    this.fab = M.FloatingActionButton.init(this.$el, {
-      direction: 'top',
-      hoverEnabled: true
-    })
-  },
   computed: {
     currentTitledButton () {
       var result = this.buttons.find(button => button.mode === this.value)

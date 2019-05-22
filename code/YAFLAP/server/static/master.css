@@ -1,0 +1,47 @@
+body, html {
+  height: 100%;
+}
+@media only screen and (max-width : 992px) {
+  #content {
+    padding-left: 0;
+  }
+}
+#sidenav-trigger {
+  position: absolute;
+  display: block;
+  left: 23px;
+  bottom: 23px;
+}
+.board-wrapper {
+  height: 100%;
+}
+#slide-out .tab>a {
+  padding: 0;
+}
+#website-desc {
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+#website-desc .title {
+  font-family: 'Courier New', Courier, monospace;
+  margin: 0 auto;
+}
+#website-desc .caption {
+  margin: 0 auto;
+  font-style: italic;
+}
+#tab-wrapper {
+  border-bottom: 1px solid #EAEAEA;
+  margin-bottom: 13px;
+}
+.property-view {
+  margin-bottom: 15px;
+}
+#autometa-type {
+  font-size: 45px;
+  margin: 10% auto;
+}
+#node-count, #edge-count {
+  font-size: 20px;
+  margin: 0 auto;
+}
