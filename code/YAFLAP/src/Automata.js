@@ -189,30 +189,31 @@ export class Automata {
   }
   matchWholeString (str) {
     let automata = this
-    let epsilonPath = []
-    function isStrMatch (string, currentNode) {
-      function epsilonClosure (nodeRef) {
-        // Using BFS scheme
-        let result = []
-        let visitedNodeRecordKeySet = new Set()
-        let nodeRecordQueue = [nodeRef]
+    let path = []
 
-        while (nodeRecordQueue.length > 0) {
-          let currentNode = nodeRecordQueue.pop()
-          result.unshift(currentNode)
-          for (let edge of currentNode.outEdges) {
-            if (edge.transition.has('') && !visitedNodeRecordKeySet.has(edge.key.target)) {
-              let node = automata._findNodeRecord(edge.key.target)
-              nodeRecordQueue.unshift(node)
-              visitedNodeRecordKeySet.add(node.key)
-            }
+    function epsilonClosure (nodeRef) {
+      // Using BFS scheme
+      let result = []
+      let visitedNodeRecordKeySet = new Set()
+      let nodeRecordQueue = [nodeRef]
+
+      while (nodeRecordQueue.length > 0) {
+        let currentNode = nodeRecordQueue.pop()
+        result.unshift(currentNode)
+        for (let edge of currentNode.outEdges) {
+          if (edge.transition.has('') && !visitedNodeRecordKeySet.has(edge.key.target)) {
+            let node = automata._findNodeRecord(edge.key.target)
+            nodeRecordQueue.unshift(node)
+            visitedNodeRecordKeySet.add(node.key)
           }
         }
-        return result
-      } // end function epsilonClosure
-
+      }
+      return result
+    } // end function epsilonClosure
+    function isStrMatch (string, currentNode) {
+      var rec = path.find(rec => rec.key === currentNode.key)
       // Main body of function execute
-      if (epsilonPath.includes(currentNode.key)) {
+      if (rec !== undefined && rec.str === string) {
         return false
       } else if (string === '') {
         return epsilonClosure(currentNode).some(node =>
@@ -220,18 +221,17 @@ export class Automata {
           node.type === NODE_TYPE.initFinal
         )
       } else {
+        path.unshift({ key: currentNode.key, str: string })
         for (let edge of currentNode.outEdges) {
           let targetNode = automata._findNodeRecord(edge.key.target)
-          console.log(currentNode, targetNode)
-          if (edge.transition.has('')) {
-            epsilonPath.push(currentNode.key)
-            if (isStrMatch(string, targetNode)) return true
-            epsilonPath.pop()
+          if (edge.transition.has('') && isStrMatch(string, targetNode)) {
+            return true
           }
-          if (edge.transition.has(string[0])) {
-            if (isStrMatch(string.slice(1), targetNode)) return true
+          if (edge.transition.has(string[0]) && isStrMatch(string.slice(1), targetNode)) {
+            return true
           }
         }
+        path.shift()
         return false
       }
     } // End function isStrMatch
@@ -239,7 +239,7 @@ export class Automata {
     var type = this.calculateType()
     if (type === AUTOMETA_TYPE.invalid || type === AUTOMETA_TYPE.empty) {
       return MATCH_RESULT.unknown
-    } else if (isStrMatch(str, this._initialNode)) {
+    } else if (isStrMatch(str, this._initialNode, 0)) {
       return MATCH_RESULT.ok
     } else {
       return MATCH_RESULT.failed

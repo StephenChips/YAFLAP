@@ -1,0 +1,415 @@
+body {
+    padding: 0;
+    margin: 0;
+}
+
+h1, h2, h3, th {
+    font-weight: 400
+}
+
+a {
+    text-decoration: none;
+    outline: none
+}
+
+a:hover {
+    text-decoration: underline
+}
+
+ul {
+    padding-left: 30px
+}
+
+button {
+    line-height: 1.5
+}
+
+table {
+    border-collapse: collapse;
+    border-spacing: 0
+}
+
+th, td {
+    padding: 0
+}
+
+textarea {
+    font: inherit;
+    color: inherit
+}
+
+.page {
+    margin: 40px 10% 60px 10%;
+}
+
+.header {
+    margin-top: 40px;
+    margin-bottom: 40px;
+    text-align: center;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 300;
+    color: #2c3e50;
+}
+
+.section-group {
+    display: flex;
+}
+
+.section {
+
+}
+
+.section-center {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.section-header {
+    text-align: center;
+}
+
+.section-button {
+    padding: 10px 20px;
+    color: white;background-color: #2c3e50;
+    border: 1px solid transparent;
+    outline: none;
+    cursor: pointer;
+    margin: 15px 10px 0px 0px;
+}
+
+.section-hidden {
+    display: none;
+}
+
+#editor {
+    width: 500px;
+    height: 400px;
+}
+
+
+
+#tree * {
+    display: inline-block;
+    font-size: 18pt;
+    margin: 2pt 2pt 0 2pt;
+    text-align: center;
+    vertical-align: bottom;
+}
+
+#tree *::before {
+    font-family: "PT Sans", Arial, Helvetica, sans-serif;
+    display: block;
+    font-size: 10pt;
+    color: slateblue;
+    border-bottom: 1pt solid slateblue;
+}
+
+#tree program::before {
+    content: 'Program';
+}
+
+#tree block::before {
+    content: 'Block';
+}
+
+#tree variableDeclaration::before {
+    content: 'VariableDeclaration';
+}
+
+#tree assignmentStatement::before {
+    content: 'AssignmentStatement';
+}
+
+#tree readStatement::before {
+    content: 'ReadStatement';
+}
+
+#tree writeStatement::before {
+    content: 'WriteStatement';
+}
+
+#tree whileStatement::before {
+    content: 'WhileStatement';
+}
+
+#tree type::before {
+    content: 'Type';
+}
+
+#tree binaryExpression::before {
+    content: 'BinaryExpression';
+}
+
+#tree unaryExpression::before {
+    content: 'UnaryExpression';
+}
+
+#tree expression::before {
+    content: 'Expression';
+}
+
+#tree parens::before {
+    content: 'Parens';
+}
+
+#tree booleanLiteral::before {
+    content: 'BooleanLiteral';
+}
+
+#tree integerLiteral::before {
+    content: 'IntegerLiteral';
+}
+
+#tree id::before {
+    content: 'ID';
+}
+
+#tree variableExpression::before {
+    content: 'VariableExpression';
+}
+
+.tokenListItem {
+    color: white;
+    border-radius: 4px;
+    display: inline-block;
+    background-color: #b0bec5;
+    margin: 4px;
+    font-size: 12px;
+    padding: 4px;
+    cursor: pointer;
+}
+
+#token {
+    width: 480px;
+    max-height: 400px;
+    overflow: auto;
+    border: 1px solid #2c3e50;
+    padding: 10px;
+}
+
+#token div:active {
+    background-color: #78909c;
+}
+
+#graText {
+    display: block;
+    width: 500px;
+    height: 400px;
+}
+
+.table {
+    width: 483px;
+    font-size: 16px;
+    border: 1px solid #e6e6e6;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 300;
+}
+
+.tableDiv {
+    width: 500px;
+    max-height: 400px;
+    overflow: auto;
+}
+
+.table th {
+    text-align: left
+}
+
+.table th, .table td {
+    padding: 10px;
+    padding-left: 20px;
+    border: 1px solid #e6e6e6
+}
+
+.table th:first-child, .table td:first-child {
+    padding-right: 20px
+}
+
+.table thead th, .table thead td {
+    border-bottom-width: 2px
+}
+
+#x86 {
+    border: 1px solid grey;
+    padding: 10px;
+    width: 480px;
+    max-height: 400px;
+    overflow: auto;
+}
+
+#x86 p {
+    margin: 8px 0 8px 0;
+    font-family: Consolas;
+    font-size: 12px;
+}
+
+#ic {
+    border: 1px solid transparent;
+    width: 500px;
+    max-height: 400px;
+    overflow: auto;
+}
+
+.icDiv {
+    margin-bottom: 4px;
+    width: 471px;
+    padding: 5px;
+    font-family: Consolas;
+    border: 1px solid grey;
+}
+
+.icUl {
+    display: none;
+    padding: 0;
+    margin: 0;
+}
+
+.icLi {
+    text-indent: 1em;
+    margin: 4px 4px 0 4px;
+    list-style-type: none;
+    display: block;
+    border-top: 1px solid grey;
+}
+
+#st {
+    border: 1px solid grey;
+    width: 480px;
+    max-height: 400px;
+    overflow: auto;
+    padding: 10px;
+}
+
+.symbolTag {
+    display: inline-block;
+    border: 1px solid lightskyblue;
+    font-family: Consolas;
+    font-size: 12px;
+    margin: 8px;
+    padding: 4px;
+}
+
+.symbolDiv {
+    border: 1px solid grey;
+    margin: 0 8px 8px 8px;
+}
+
+#error {
+    margin: 10px auto;
+    width: 80%;
+    padding: 4px 12px 4px 12px;
+    border: 1px solid red;
+    font-family: Consolas;
+    background: rgba(244, 143, 177, 0.2);
+}
+
+#error p {
+    margin: 0;
+    font-size: 12px;
+}
+
+#debug {
+    padding: 10px;
+    width: 480px;
+    height: 380px;
+    font-family: Consolas;
+    font-size: 14px;
+    font-weight: bold;
+    border: 1px solid #2c3e50;
+}
+
+.debugActive {
+    border: 1px solid #66bb6a;
+    background: rgba(165, 214, 167, 0.2);
+}
+
+.disappear {
+    display: none;
+}
+
+.appear {
+    display: block;
+}
+
+#dfa {
+    border: 1px solid grey;
+    padding: 10px;
+    width: 480px;
+    max-height: 400px;
+    overflow: auto;
+    display: flex;
+    align-content: center;
+    justify-content: center;
+}
+
+#ast {
+    border: 1px solid grey;
+    padding: 10px;
+    width: 480px;
+    max-height: 400px;
+    overflow: auto;
+    /*display: flex;*/
+    /*align-content: center;*/
+    /*justify-content: center;*/
+}
+
+#tree {
+    width: 40000px;
+}
+
+.warn {
+    color: red;
+}
+
+#nav {
+    position: absolute;
+    top: 40px;
+    right: 40px;
+    width: 40px;
+}
+
+#nav-item {
+    background-color: white;
+    display: none;
+    font-family: Consolas;
+    font-weight: 300;
+    border-radius: 10px;
+    border: 1px solid #bdbdbd;
+    box-shadow: 4px 4px 2px #eeeeee;
+    list-style: none;
+    overflow: hidden;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+
+#nav-item li {
+    display: block;
+    padding: 4px 0;
+}
+
+#nav-item li a {
+    display: block;
+    text-decoration: none;
+    outline: none;
+    color: #424242;
+}
+
+#nav-item li:hover {
+    background-color: #42a5f5;
+    cursor: pointer;
+}
+
+#nav-item li:hover a {
+    color: white;
+}
+
+#browse {
+    display: block;
+    margin: 0 auto;
+}
+
+#nav:hover #browse{
+    background-image: url("../img/browse_fill.png");
+}
