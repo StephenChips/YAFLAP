@@ -133,7 +133,6 @@ export default {
       this.showLLSets('first-sets-table', this.firstSet)
       this.showLLSets('follow-sets-table', this.followSet)
       this.showLLSets('predict-sets-table', this.predictSet)
-      console.log(Init.left, Init.grammar, InitGrammar.getPredictSets())
       this.showLLAnalyticalTable('ll-analyse-table', Init.left, InitGrammar.getPredictSets())
     },
     showLLAnalyticalTable: function (id, l, ps) {
