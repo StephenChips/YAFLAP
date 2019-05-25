@@ -154,6 +154,7 @@ export default {
         : x.toString();
     },
     showSymbolTable (p, sel) {
+      console.log(p.sons[0])
       var div = $(sel)
       div.html('');
       this.buildSymbolTable(p.sons[0], div);

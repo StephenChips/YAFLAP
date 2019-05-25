@@ -25,39 +25,25 @@
         <h3 class="title">ERROR</h3>
         {{ errorMessage }}
       </div>
-      <table v-show="showPanel === 'first-set'" id="first-sets-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Sets</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <table v-show="showPanel === 'follow-set'" id="follow-sets-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Sets</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <table v-show="showPanel === 'predict-set'" id="predict-sets-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Sets</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <table v-show="showPanel === 'll1-analysis-table'" id="ll-analyse-table">
-          <thead>
-          <tr></tr>
-          </thead>
-          <tbody></tbody>
-      </table>
+      <key-value-table
+        v-show="showPanel === 'first-set'"
+        key-title="Non-Terminators"
+        value-title="First Sets"
+        :list="firstSetTableData" />
+      <key-value-table
+        v-show="showPanel === 'follow-set'"
+        key-title="Non-Terminators"
+        value-title="Follow Sets"
+        :list="followSetTableData" />
+      <key-value-table v-show="showPanel === 'predict-set'"
+        key-title="Production"
+        value-title="Predict Sets"
+        :list="predictSetTableData" />
+      <two-dimension-table
+        v-show="showPanel ==='ll1-analysis-table'"
+        :row-title-list="terminatorList"
+        :col-title-list="nonTerminatorList"
+        :relationships="analysisTableData" />
     </div>
   </multipane>
   <a @click="loadSimpleArithmeticExpressionGrammar" href="javascript:void(0);">Load Example of Simple Arithmetic Expression</a>
@@ -66,12 +52,13 @@
 </template>
 <script>
 import { Multipane, MultipaneResizer } from 'vue-multipane'
+import KeyValueTable from './KeyValueTable.vue'
+import TwoDimensionTable from './TwoDimensionTable.vue'
 import { codemirror } from 'vue-codemirror'
 import { grammars, sematics } from '../iki-parser/iki'
 import { grammarTextToGrammarStructure } from '../iki-parser/ast-convert'
 import { flattenDeep } from 'lodash'
 import { Grammar } from 'first-follow'
-import $ from 'jquery'
 
 import {
   getSemanticErrors,
@@ -89,10 +76,14 @@ export default {
     return {
       strProductionRules: '',
       errorMessage: undefined,
-      firstSet: {},
-      followSet: {},
-      predictSet: {},
-      analysisTable: {},
+      
+      terminatorList: [],
+      nonTerminatorList: [],
+      firstSetTableData: [],
+      followSetTableData: [],
+      predictSetTableData: [],
+      analysisTableData: {},
+
       showPanel: 'first-set',
       codeMirrorOptions: {
         lineNumbers: true,
@@ -119,131 +110,143 @@ export default {
         this.calculateLL1Tables(strProductionRules)
       } catch (e) {
         this.errorMessage = e.message;
+        throw e
       }
     },
     calculateLL1Tables (strProductionRules) {
-      var Init = grammarTextToGrammarStructure(strProductionRules)
-      var InitGra = Init.grammar
-      if (InitGra.length === 0) return
-      var InitGrammar = new Grammar(InitGra)
-      this.predictSet = InitGrammar.getPredictSets()
-      this.firstSet = InitGrammar.getFirstSets()
-      this.followSet = InitGrammar.getFollowSets()
+      var grammar = grammarTextToGrammarStructure(strProductionRules)
+      if (grammar.length === 0) {
+        return
+      }
+      var tableGenerator = new Grammar(grammar)
+      var predictSet = tableGenerator.getPredictSets()
+      var firstSet = tableGenerator.getFirstSets()
+      var followSet = tableGenerator.getFollowSets()
+      console.log(followSet)
+      var analysisTable = this.getAnalysisTable(grammar, predictSet)
+      var symbolSet = this.getSymbolSet(grammar)
 
-      this.showLLSets('first-sets-table', this.firstSet)
-      this.showLLSets('follow-sets-table', this.followSet)
-      this.showLLSets('predict-sets-table', this.predictSet)
-      this.showLLAnalyticalTable('ll-analyse-table', Init.left, InitGrammar.getPredictSets())
+      this.terminatorList = symbolSet.terminatorList
+      this.nonTerminatorList = symbolSet.nonTerminatorList
+      this.predictSetTableData = this.transformPredictSet(predictSet)
+      this.firstSetTableData = this.transformFirstSet(firstSet)
+      this.followSetTableData = this.transformFollowSet(followSet)
+      this.analysisTableData = this.transformAnalysisTable(analysisTable)
+
+      // this.showLLAnalyticalTable('ll-analyse-table', Init.left, InitGrammar.getPredictSets())
     },
-    showLLAnalyticalTable: function (id, l, ps) {
-              {
-            var map = new Map(), setX = new Set(), setY = new Set();
-            for (var key in ps) {
-                var arr = ps[key];
-                setY.add(l[key]);
-                for (var i = 0; i < arr.length; i++) {
-                    if (map.has(l[key])) {
-                        var tmp = map.get(l[key]);
-                        if (tmp.has(arr[i])) {
-                            var tt = tmp.get(arr[i]);
-                            tt.push(key);
-                            tmp.set(arr[i], tt);
-                        } else {
-                            var tt = [];
-                            tt.push(key);
-                            tmp.set(arr[i], tt);
-                        }
-                    } else {
-                        var tmp = new Map();
-                        if (tmp.has(arr[i])) {
-                            var tt = tmp.get(arr[i]);
-                            tt.push(key);
-                            tmp.set(arr[i], tt);
-                        } else {
-                            var tt = [];
-                            tt.push(key);
-                            tmp.set(arr[i], tt);
-                        }
-                        map.set(l[key], tmp);
-                    }
-                    setX.add(arr[i]);
-                }
-            }
-        }
-        var thtr = $('#' + id + ' thead tr');
-        var tb = $('#' + id + ' tbody');
-        thtr.html('');
-        tb.html('');
-        thtr.append('<th>#</th>');
-        setX.forEach(function (keyX) {
-            thtr.append('<th>' + keyX + '</th>');
-        });
-        setY.forEach(function (keyY) {
-            var s = '<td>' + keyY + '</td>';
-            setX.forEach(function (keyX) {
-                var tmp = map.get(keyY);
-                if (tmp.has(keyX)) {
-                    var tt = tmp.get(keyX);
-                    if (tt.length > 1) {
-                        var str = tt[0];
-                        for (var i = 1; i < tt.length; i++) {
-                            str += (', ' + tt[i]);
-                        }
-                        s += ('<td class="warn">' + str + '</td>');
-                    } else {
-                        s += ('<td>' + tt[0] + '</td>')
-                    }
-                } else {
-                    s += ('<td> </td>')
-                }
-            });
-            tb.append('<tr>' + s + '</tr>');
-        });
+    transformPredictSet (predictSet) {
+      var result = []
+      var dict = new Map([['\u0000', 'EOF']])
+      for (var key in predictSet) {
+        result.push({
+          key: key,
+          value: this.replaceArrayItem(predictSet[key], dict).join(', ')
+        })
+      }
+      return result
     },
-    showLLSets: function (id, data) {
-        var tb = $('#' + id + ' tbody');
-        tb.html(''); //clear
-        for (var key in data) {
-            var s, arr = data[key];
-            if (arr[0] === "\0") {
-                s = 'EOF';
-            } else if (arr[0] === null) {
-                s = 'ε';
-            } else {
-                s = arr[0];
-            }
-            for (var i = 1; i < arr.length; i++) {
-                if (arr[i] === "\0") {
-                    s = s + ', EOF';
-                } else if (arr[i] === null) {
-                    s = s + ', ε';
-                } else {
-                    s = s + (', ' + arr[i]);
-                }
-            }
-            tb.append('<tr><td>' + key + '</td><td>' + s + '</td></tr>');
+    transformFollowSet (followSet) {
+      var result = []
+      var dict = new Map([[null, 'ε'], ['\u0000', 'EOF']])
+      for (var nonTerminator in followSet) {
+        result.push({
+          key: nonTerminator,
+          value: this.replaceArrayItem(followSet[nonTerminator], dict).join(', ')
+        })
+      }
+      return result
+    },
+    transformFirstSet (firstSet) {
+      var result = []
+      var dict = new Map([[null, 'ε']])
+      for (var nonTerminator in firstSet) {
+        result.push({
+          key: nonTerminator,
+          value: this.replaceArrayItem(firstSet[nonTerminator], dict).join(', ')
+        })
+      }
+      return result
+    },
+    transformAnalysisTable (analysisTable) {
+      var result = {}
+      for (var nonTerminator in analysisTable) {
+        result[nonTerminator] = {}
+        for (var terminator in analysisTable[nonTerminator]) {
+          result[nonTerminator][terminator] = analysisTable[nonTerminator][terminator].join(', ')
         }
+      }
+      return result
+    },
+    replaceArrayItem (arr, dict) {
+      return arr.map(function (value) {
+        return dict.has(value) ? dict.get(value) : value
+      })
+    },
+    getAnalysisTable (grammar, predictSet) {
+      var analysisTable = {}
+      for (var productionId in predictSet) {
+        var productionIndex = productionId - 1
+        var nonTerminator = grammar[productionIndex].left
+        var predictSetOfProduction = predictSet[productionId]
+        if (!analysisTable[nonTerminator]) {
+          analysisTable[nonTerminator] = {}
+        }
+        for (var terminator of predictSetOfProduction) {
+          if (!analysisTable[nonTerminator][terminator]) {
+            analysisTable[nonTerminator][terminator] = []
+          }
+          analysisTable[nonTerminator][terminator].push(productionId)
+        } 
+      }
+      return analysisTable
+    },
+    getSymbolSet (grammar) {
+      var terminatorSet = new Set()
+      var nonTerminatorSet = new Set()
+
+      for (var production of grammar) {
+        nonTerminatorSet.add(production.left)
+      }
+
+      for (var production of grammar) {
+        for (var rhsSymbol of production.right) {
+          if (!nonTerminatorSet.has(rhsSymbol) && rhsSymbol !== null) {
+            terminatorSet.add(rhsSymbol)
+          }
+        }
+      }
+
+      return {
+        terminatorList: Array.from(terminatorSet),
+        nonTerminatorList: Array.from(nonTerminatorSet)
+      }
     },
     loadSimpleArithmeticExpressionGrammar () {
       this.strProductionRules =
-`Expr -> Term ExprLeft
-ExprLeft -> + term ExprLeft
-         | - term ExprLeft
+`Expr -> Term ExprLeft;
+ExprLeft -> plus term ExprLeft
+         | subtract term ExprLeft
          | ε
-Term     -> Factor TermLeft
-TermLeft -> * Factor TermLeft
-         |  / Factor TermLeft
+         ;
+Term     -> Factor TermLeft;
+TermLeft -> multiply Factor TermLeft
+         |  divide Factor TermLeft
          | ε
-Factor -> - Factor
+         ;
+Factor -> subtract Factor
          |  Real
-         | ( Expr )
-Real -> number`
+         | leftParenthesis Expr rightParenthesis
+         ;
+Real -> number;
+`
     },
     loadNestingParenthesesExample () {
-      this.strProductionRules =  
-` Start -> StartLeft
-  StartLeft -> ( StartLeft )
-        | ε
+      this.strProductionRules =  `
+Start -> StartLeft;
+StartLeft -> leftParenthesis StartLeft rightParenthesis
+      | ε
+      ;
 `
     }
   },
@@ -252,7 +255,7 @@ Real -> number`
       return this.errorMessage === undefined
     }
   },
-  components: { Multipane, MultipaneResizer, codemirror }
+  components: { Multipane, MultipaneResizer, codemirror, KeyValueTable, TwoDimensionTable }
 }
 </script>
 <style>
@@ -331,29 +334,8 @@ Real -> number`
   background-color:antiquewhite;
 }
 
-table {
-  box-shadow: 3px 3px 0 black;
-  border-collapse: collapse;
-}
-
-th {
-  padding: 10px 20px;
-  border: 1px solid black; 
-}
-
-td {
-  background-color: #eeeeee;
-  padding-top: 5px;
-  padding-bottom: 5px;
-  border: 1px solid black;
-}
-
 .CodeMirror {
   border: 1px solid #eee;
   height: auto;
 }
 </style>
-<style>
-
-</style>
-

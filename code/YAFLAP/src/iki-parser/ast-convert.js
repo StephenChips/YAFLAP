@@ -1,65 +1,122 @@
-export function grammarTextToGrammarStructure (s) {
-  var gra = []
-  var left = ['jgallon']
-  var arr = s.split('\n')
-  var start = ''
-  for (var i = 0; i < arr.length; i++) {
-    if (arr[i] === '') continue
-    var t = arr[i].trim()
-    var res = isAss(t)
-    if (res !== -1) {
-      var l = t.slice(0, res).trim()
-      var r = t.slice(res + 2, t.length).trim()
-      if (l === '' || r === '') {
-        throw new Error('Invalid grammar')
-      } else {
-        start = l
-        r = resetBlank(r)
-        var rarr = r.split(' ')
-        rarr = replaceEpsilon(rarr)
-        gra.push({left: start, right: rarr})
-        left.push(start)
-      }
-    } else {
-      if (t[0] === '|') {
-        t = t.slice(1, t.length).trim()
-        if (start === '') {
-          throw new Error('invalid grammar')
-        } else {
-          resetBlank(t)
-          var rarr = t.split(' ')
-          rarr = replaceEpsilon(rarr)
-          gra.push({left: start, right: rarr})
-          left.push(start)
-        }
-      }
-    }
+export function grammarTextToGrammarStructure (strGrammar) {
+  var result = []
+  var cursor = skipWhitespaces(strGrammar, 0)
+  while (cursor < strGrammar.length && isValidCharOfSymbol(strGrammar[cursor])) {
+    var { productionList, end } = parseProduction(strGrammar, cursor)
+    result = result.concat(productionList)
+    cursor = skipWhitespaces(strGrammar, end)
   }
-  return {grammar: gra, left: left}
+  return result
 }
 
-function replaceEpsilon (arr) {
-  var res = []
-  for (var i = 0; i < arr.length; i++) {
-    if (arr[i] === 'ε') {
-      res.push(null)
-    } else {
-      res.push(arr[i])
-    }
+function parseProduction (strGrammar, cursor) {
+  let lhs, rhs
+  lhs = parseLHSOfProduction(strGrammar, cursor)
+  cursor = skipWhitespaces(strGrammar, lhs.end) // TODO
+  cursor = skipProductionSign(strGrammar, cursor)
+  cursor = skipWhitespaces(strGrammar, cursor)
+  rhs = parseRHSOfProduction(strGrammar, cursor)
+  cursor = skipSemiColon(strGrammar, rhs.end)
+  return {
+    productionList: makeProductionList(lhs.symbol, rhs.listOfRhs),
+    end: cursor
   }
-  return res
 }
 
-function resetBlank (s) {
-  var re = /\s+/g
-  return s.replace(re, ' ')
+// Parse left hand side of production
+function parseLHSOfProduction (strGrammar, cursor) {
+  if (!isUppercase(strGrammar[cursor])) {
+    throw new SyntaxError('The left hand side of a production should be an terminator')
+  } else {
+    return parseSymbol(strGrammar, cursor)
+  }
 }
 
-function isAss (s) {
-  for (var i = 0; i < s.length - 1; i++) {
-    if (s[i] === '-' && s[i + 1] === '>') {
-      return i
-    }
+function skipProductionSign (strGrammar, cursor) {
+  cursor = skipWhitespaces(strGrammar, cursor)
+  if (cursor >= strGrammar.length - 1) {
+    throw new SyntaxError('Incomplete produciton, missing prodcution sign and symbol list')
+  } else if (strGrammar[cursor] === '-' && strGrammar[cursor + 1] === '>') {
+    return cursor + 2
+  } else {
+    throw new SyntaxError('Expect production sign')
   }
-  return -1
+}
+
+function parseRHSOfProduction (strGrammar, cursor, lhsSymbol) {
+  var parseResult = parseSymbolList(strGrammar, cursor)
+  var listOfRhs = [parseResult.symbolList]
+  cursor = parseResult.end
+
+  while (cursor < strGrammar.length && strGrammar[cursor] === '|') {
+    cursor = skipWhitespaces(strGrammar, ++cursor) // Skip "|" and the whitespaces after it
+    parseResult = parseSymbolList(strGrammar, cursor)
+    listOfRhs.push(parseResult.symbolList)
+    cursor = parseResult.end
+  }
+
+  return {
+    listOfRhs,
+    end: cursor
+  }
+}
+
+function skipSemiColon (strGrammar, cursor) {
+  if (cursor >= strGrammar.length || strGrammar[cursor] !== ';') {
+    throw new SyntaxError('Expect \';\' at the end of a production.')
+  }
+  return ++cursor
+}
+
+function parseSymbol (strGrammar, cursor) {
+  var end = cursor
+  while (end < strGrammar.length && isValidCharOfSymbol(strGrammar[end])) {
+    end++
+  }
+  var symbol = strGrammar.substring(cursor, end)
+  if (symbol === 'ε') {
+    symbol = null
+  }
+  return { symbol, end }
+}
+
+function parseSymbolList (strGrammar, cursor) {
+  var symbolList = []
+  while (cursor < strGrammar.length && isValidCharOfSymbol(strGrammar[cursor])) {
+    var { symbol, end } = parseSymbol(strGrammar, cursor)
+    symbolList.push(symbol)
+    cursor = skipWhitespaces(strGrammar, end)
+  }
+  if (symbolList.length === 0) {
+    throw new SyntaxError('Empty symbol list at right hand side of the production.')
+  }
+  return { symbolList, end: cursor }
+}
+
+function isValidCharOfSymbol (char) {
+  return /[A-Za-zε_']/.test(char)
+}
+
+function skipWhitespaces (strGrammar, cursor) {
+  while (cursor < strGrammar.length && isWhitespace(strGrammar[cursor])) {
+    cursor++
+  }
+  return cursor
+}
+
+function isWhitespace (char) {
+  return /\s/.test(char)
+}
+
+function isUppercase (char) {
+  return char.toUpperCase() === char
+}
+
+function makeProductionList (lhsSymbol, listOfRhs) {
+  return listOfRhs.map(function (rhs) {
+    return {
+      left: lhsSymbol,
+      right: rhs
+    }
+  })
 }
